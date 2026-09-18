@@ -15,6 +15,8 @@ $job-search apply --market china <URL, file, or pasted JD>
 $job-search interview --market finland <company/role>
 ```
 
+Build personalization only from information the user deliberately supplies to this workspace during setup or in the current request. Do not import facts, preferences, target roles, locations, or constraints from assistant memory or unrelated conversations.
+
 ## Choose the market
 
 For every `scrape`, `rank`, `apply`, or `interview` run, resolve exactly one market: `china`, `europe`, or `finland`.
