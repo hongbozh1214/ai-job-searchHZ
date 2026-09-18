@@ -75,7 +75,7 @@ export interface NormalizedJob {
   title: string
   location: string | null
   url: string
-  posted: string | null
+  date: string | null
   source_ats: AtsType
   id?: string
 }
@@ -414,7 +414,7 @@ export function scrapeGenericLinks(html: string, baseUrl: string, company: strin
       title: text.length > 140 ? text.slice(0, 140) + "…" : text,
       location: null,
       url,
-      posted: null,
+      date: null,
       source_ats: "generic",
     })
   }

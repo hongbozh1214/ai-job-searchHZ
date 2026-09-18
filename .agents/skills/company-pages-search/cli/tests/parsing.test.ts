@@ -15,7 +15,7 @@ const job = (over: Partial<NormalizedJob> = {}): NormalizedJob => ({
   title: "Security Engineer",
   location: "Geneva, Switzerland",
   url: "https://acme.example/jobs/1",
-  posted: null,
+  date: null,
   source_ats: "generic",
   ...over,
 });

@@ -123,7 +123,10 @@ ALLOWED_IGNORE_NEGATIONS = {
     "!cover_letters/OpenFonts/fonts/**",
     "!cv/main_example.tex",
     "!cover_letters/cover_example.tex",
+    "!cv/chinese/main_example.tex",
+    "!cover_letters/chinese/cover_example.tex",
     "!documents/**/.gitkeep",
+    "!markets/*/jobs/**/.gitkeep",
 }
 
 # Hook commands the template legitimately ships, as "<Event>:<command>" strings.

@@ -62,7 +62,7 @@ export async function fetchGreenhouse(entry: RegistryEntry, detailed = false): P
     title: j.title,
     location: j.location?.name ?? null,
     url: j.absolute_url,
-    posted: j.updated_at ?? null,
+    date: j.updated_at ?? null,
     source_ats: "greenhouse" as const,
     id: String(j.id),
   }))
@@ -78,7 +78,7 @@ export async function fetchGreenhouseDetail(boardId: string, jobId: string): Pro
     title: data.title,
     location: data.location?.name ?? null,
     url: data.absolute_url,
-    posted: data.updated_at ?? null,
+    date: data.updated_at ?? null,
     source_ats: "greenhouse",
     description: stripHtml(data.content),
   }
@@ -113,7 +113,7 @@ export async function fetchLever(entry: RegistryEntry): Promise<NormalizedJob[]>
     title: j.text,
     location: j.categories?.location ?? null,
     url: j.hostedUrl,
-    posted: j.createdAt ? new Date(j.createdAt).toISOString() : null,
+    date: j.createdAt ? new Date(j.createdAt).toISOString() : null,
     source_ats: "lever" as const,
     id: j.id,
   }))
@@ -130,7 +130,7 @@ export async function fetchLeverDetail(company: string, jobId: string): Promise<
     title: j.text,
     location: j.categories?.location ?? null,
     url: j.hostedUrl,
-    posted: j.createdAt ? new Date(j.createdAt).toISOString() : null,
+    date: j.createdAt ? new Date(j.createdAt).toISOString() : null,
     source_ats: "lever",
     description: j.descriptionPlain ?? stripHtml(j.description),
   }
@@ -160,7 +160,7 @@ export async function fetchSmartRecruiters(entry: RegistryEntry): Promise<Normal
       title: j.name,
       location: locParts.length ? locParts.join(", ") : null,
       url: `https://jobs.smartrecruiters.com/${encodeURIComponent(entry.ats_id)}/${j.id}`,
-      posted: j.releasedDate ?? null,
+      date: j.releasedDate ?? null,
       source_ats: "smartrecruiters" as const,
       id: j.id,
     }
@@ -183,7 +183,7 @@ export async function fetchSmartRecruitersDetail(companyId: string, jobId: strin
     title: data.name,
     location: locParts.length ? locParts.join(", ") : null,
     url: `https://jobs.smartrecruiters.com/${encodeURIComponent(companyId)}/${data.id}`,
-    posted: data.releasedDate ?? null,
+    date: data.releasedDate ?? null,
     source_ats: "smartrecruiters",
     description: description || null,
   }
@@ -254,7 +254,7 @@ export async function fetchOracle(entry: RegistryEntry, limit = 200): Promise<No
     location: r.PrimaryLocation ?? r.PrimaryLocationCountry ?? null,
     // The portal's own job permalink, so the URL is one a human can open.
     url: `https://${host}/hcmUI/CandidateExperience/en/sites/${siteNumber}/job/${r.Id}`,
-    posted: r.PostedDate ?? null,
+    date: r.PostedDate ?? null,
     source_ats: "oracle" as const,
     id: r.Id,
   }))
@@ -292,7 +292,7 @@ export async function fetchOracleDetail(atsId: string, jobId: string): Promise<R
     title: item.Title ?? null,
     location: (item.PrimaryLocation as string | null) ?? (item.PrimaryLocationCountry as string | null) ?? null,
     url: `https://${host}/hcmUI/CandidateExperience/en/sites/${siteNumber}/job/${jobId}`,
-    posted: (item.ExternalPostedStartDate as string | null) ?? null,
+    date: (item.ExternalPostedStartDate as string | null) ?? null,
     source_ats: "oracle",
     description: description || null,
   }
