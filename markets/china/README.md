@@ -21,8 +21,8 @@ $job-search interview --market china markets/china/jobs/evaluated/<job>.md
 1. 运行 `$job-search setup --market china`，初始化并填写 `documents/china/profile/` 下的个人资料。
    模板位于 `markets/china/profile/`（tracked），个人数据写入 `documents/china/profile/`
    （gitignored，不会提交到仓库）。
-2. 运行 `$job-search scrape --market china`，从 BOSS 直聘、猎聘、智联招聘、前程无忧、脉脉、国聘、
-   公司官网等公开来源低频搜索岗位。
+2. 运行 `$job-search scrape --market china`，从 LinkedIn public jobs CLI、BOSS 直聘、猎聘、
+   智联招聘、前程无忧、脉脉、国聘、公司官网等公开来源低频搜索岗位。
 3. 如果公开页面可读取，工具会保存完整 JD；如果遇到登录、反爬或内容不完整，
    工具会保存待手动补全文件。
 4. 也可以手动复制岗位 JD 到 `markets/china/jobs/inbox/<company>-<role>.md`。

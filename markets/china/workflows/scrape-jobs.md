@@ -1,9 +1,9 @@
 # China Job Scrape Workflow
 
 You are searching for China-market job postings from public pages. This workflow
-uses low-volume WebSearch and WebFetch only. Do not log in, use cookies, bypass
-anti-bot systems, message recruiters, apply to jobs, or operate any platform
-account.
+uses the low-volume LinkedIn public CLI plus WebSearch and WebFetch. Do not log
+in, use cookies, bypass anti-bot systems, message recruiters, apply to jobs, or
+operate any platform account.
 
 ## Step 0: Parse Input
 
@@ -25,6 +25,7 @@ Read:
 - `documents/china/profile/preferences.md`
 - `documents/china/profile/candidate.md`
 - `markets/china/search-queries.md`
+- `.agents/skills/linkedin-search/SKILL.md` when that skill is installed and enabled
 - `job_search_tracker.csv` if it exists
 - `job_scraper/seen_jobs.json` if it exists; create it if missing with
   `{"seen": {}}`
@@ -42,11 +43,13 @@ Default public sources:
 - 51job (`site:51job.com`)
 - Maimai (`site:maimai.cn`)
 - Guopin (`site:iguopin.com`)
+- LinkedIn public jobs (`linkedin-search` CLI)
 - Company career pages
 
-Do not include LinkedIn by default for China-mainland searches. Only use LinkedIn
-when the user explicitly asks for international, foreign-company, outbound, or
-English-language roles.
+LinkedIn is an enabled China source, including for mainland roles; it is not
+limited to foreign-company or English-language searches. Translate each selected
+city into a LinkedIn location string such as `"Shanghai, China"`, and preserve
+the user's Chinese or English role keywords instead of silently broadening them.
 
 Do not include discontinued or user-excluded job boards.
 
@@ -59,9 +62,23 @@ Generate a small set of targeted WebSearch queries:
 Prefer precise queries over broad scraping. Include city and role terms whenever
 possible.
 
+For LinkedIn, use the installed CLI rather than a `site:linkedin.com` WebSearch:
+
+```bash
+bun run .agents/skills/linkedin-search/cli/src/cli.ts search \
+  --query "<role or skill>" --location "<city, China>" \
+  --jobage 14 --limit 10 --format json
+```
+
+Default to at most 3 LinkedIn role/location searches, 2 in focus mode, or 5 in
+broad mode. If Bun is unavailable, the skill is disabled, or LinkedIn rejects or
+rate-limits the request, report LinkedIn as unavailable and continue with the
+other China sources; do not replace it with logged-in browser automation.
+
 ## Step 3: Search Public Results
 
-Run WebSearch queries. For each promising result, keep:
+Run the LinkedIn CLI searches and WebSearch queries. For each promising result,
+keep:
 
 - Title.
 - URL.
@@ -74,7 +91,15 @@ constraints, or duplicates.
 
 ## Step 4: Fetch Public Pages
 
-For promising results only, use WebFetch once per URL.
+For promising LinkedIn results, fetch detail through the CLI once per shortlisted
+job ID:
+
+```bash
+bun run .agents/skills/linkedin-search/cli/src/cli.ts detail <id> --format json
+```
+
+For other promising results, use WebFetch once per URL. Do not fetch every
+LinkedIn search hit before deduplication and basic relevance filtering.
 
 Classify each result:
 
@@ -186,8 +211,8 @@ without replacing canonical fields:
   "deadline": "YYYY-MM-DD or null",
   "fit": "high/medium/low or null when the JD is incomplete",
   "status": "new/skipped",
-  "portal": "zhipin/liepin/zhaopin/51job/maimai/guopin/company-careers",
-  "source": "websearch",
+  "portal": "linkedin-search",
+  "source": "cli",
   "market": "china",
   "fetch_status": "ready/manual_required/blocked/skipped"
 }
@@ -198,6 +223,11 @@ fetch/access state only in `fetch_status`; never write `ready`, `blocked`, or
 `manual_required` into `status`. Use `status: "new"` for relevant records kept
 for evaluation and `status: "skipped"` for explicit exclusions. If fit cannot
 be judged from an incomplete JD, use `null` rather than guessing.
+
+The JSON block shows a LinkedIn result. For WebSearch results, set `source` to
+`websearch` and set `portal` to the originating site (`zhipin`, `liepin`,
+`zhaopin`, `51job`, `maimai`, `guopin`, or `company-careers`). Never store the
+explanatory labels themselves as field values.
 
 ## Step 6: Present Results
 

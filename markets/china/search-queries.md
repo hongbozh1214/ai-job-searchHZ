@@ -11,10 +11,13 @@
 - 前程无忧: `site:51job.com`
 - 脉脉: `site:maimai.cn`
 - 国聘: `site:iguopin.com`
+- LinkedIn：使用 `linkedin-search` CLI，不使用 `site:linkedin.com` 查询
 - 公司官网招聘页: 公司名 + `招聘` / `社会招聘` / `校园招聘` / `careers`
 
-领英不作为中国大陆默认搜索渠道。如用户明确寻找外企、出海岗位或英文岗位，可以把
-领英链接作为手动 JD 来源处理。
+LinkedIn 是中国大陆搜索的可用默认来源，不限于外企、出海或英文岗位。每个查询必须
+显式提供地点（例如 `Shanghai, China`），默认限制最近 14 天、每次最多 10 条，并遵守
+`markets/china/workflows/scrape-jobs.md` 的低频查询预算。CLI 不可用或被限流时，记录失败
+并继续其他来源，不使用登录态浏览器替代。
 
 ## 查询模板
 

@@ -65,7 +65,8 @@ class StateAndRuntimeContractTests(unittest.TestCase):
         workflow = read("markets/china/workflows/scrape-jobs.md")
         self.assertIn('"status": "new/skipped"', workflow)
         self.assertIn('"fetch_status": "ready/manual_required/blocked/skipped"', workflow)
-        self.assertIn('"source": "websearch"', workflow)
+        self.assertIn('"source": "cli"', workflow)
+        self.assertIn("For WebSearch results, set `source` to\n`websearch`", workflow)
         self.assertIn("tools/job_key.py", workflow)
 
     def test_runtime_does_not_invent_a_specific_ai_tool(self):
@@ -81,6 +82,15 @@ class StateAndRuntimeContractTests(unittest.TestCase):
 
 
 class PortalSafetyTests(unittest.TestCase):
+    def test_china_scrape_routes_linkedin_through_the_public_cli(self):
+        workflow = read("markets/china/workflows/scrape-jobs.md")
+        self.assertIn(".agents/skills/linkedin-search/cli/src/cli.ts search", workflow)
+        self.assertIn(".agents/skills/linkedin-search/cli/src/cli.ts detail", workflow)
+        self.assertIn('"<city, China>"', workflow)
+        self.assertIn("--jobage 14 --limit 10", workflow)
+        self.assertIn("report LinkedIn as unavailable and continue", workflow)
+        self.assertNotIn("Do not include LinkedIn by default", workflow)
+
     def test_company_registry_fails_closed_instead_of_running_examples(self):
         helper = read(".agents/skills/company-pages-search/cli/src/helpers.ts")
         self.assertIn('"NO_REGISTRY"', helper)
