@@ -85,18 +85,14 @@ Classify each result:
 - `blocked`: page explicitly blocks automated/public access.
 - `duplicate`: URL or company+role already appears in `seen_jobs.json`,
   `job_search_tracker.csv`, or `markets/china/jobs/inbox/`.
-- `skip`: unrelated, expired, outside constraints, or too weak to keep. Also
-  applies when the JD explicitly requires education credentials the candidate
-  does not have — see `documents/china/profile/preferences.md` "学历排除":
-  - "全日制本科" (without "接受专升本" wording)
-  - "统招本科" (meaning full-time unified enrollment, excluding 统招专升本)
-  - "学士学位" (candidate has graduation certificate but no degree certificate)
-  - "985/211 本科"
-  - Record the trigger in the `seen_jobs.json` entry's `skip_reason` as
-    `education_mismatch_<specific_wording>`, e.g.
-    `education_mismatch_full_time_bachelor`,
-    `education_mismatch_bachelor_degree_required`,
-    `education_mismatch_985_211`.
+- `skip`: unrelated, expired, outside explicit constraints, or too weak to keep.
+  Education or credential wording is an automatic exclusion only when the user
+  explicitly recorded that exact boundary under `documents/china/profile/preferences.md`
+  "学历与资质硬门槛" and the shared candidate evidence confirms the mismatch.
+  Otherwise keep it as `manual_required` and name the unresolved requirement;
+  never infer a candidate's degree, school tier, or certificate status. For an
+  explicit mismatch, record `skip_reason` as
+  `education_or_credential_mismatch:<quoted requirement>`.
 
 Never infer missing responsibilities, requirements, salary, or benefits from the
 title alone.
@@ -175,19 +171,33 @@ Use this structure:
 
 ```
 
-Add every kept URL to `job_scraper/seen_jobs.json` with:
+Derive the canonical key with `python3 tools/job_key.py`, then add every new or
+skipped URL to `job_scraper/seen_jobs.json`. Do not create a second entry for a
+duplicate. Use the shared state contract, adding `market` and `fetch_status`
+without replacing canonical fields:
 
 ```json
 {
   "title": "...",
   "company": "...",
   "url": "...",
-  "source": "...",
   "first_seen": "YYYY-MM-DD",
+  "posted_date": "YYYY-MM-DD or null",
+  "deadline": "YYYY-MM-DD or null",
+  "fit": "high/medium/low or null when the JD is incomplete",
+  "status": "new/skipped",
+  "portal": "zhipin/liepin/zhaopin/51job/maimai/guopin/company-careers",
+  "source": "websearch",
   "market": "china",
-  "status": "ready/manual_required/blocked/duplicate/skipped"
+  "fetch_status": "ready/manual_required/blocked/skipped"
 }
 ```
+
+`status` is the lifecycle field consumed by the canonical rank workflow. Keep
+fetch/access state only in `fetch_status`; never write `ready`, `blocked`, or
+`manual_required` into `status`. Use `status: "new"` for relevant records kept
+for evaluation and `status: "skipped"` for explicit exclusions. If fit cannot
+be judged from an incomplete JD, use `null` rather than guessing.
 
 ## Step 6: Present Results
 
@@ -202,7 +212,7 @@ Present a concise table:
 
 Then show:
 
-- Ready to analyze: files that can be passed to `/china analyze`.
+- Ready to analyze: files that can be passed to `$job-search analyze --market china`.
 - Manual required: files where the user must paste the full JD.
 - Skipped/duplicates: count only, unless the user asks for details.
 

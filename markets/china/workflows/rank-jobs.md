@@ -24,18 +24,13 @@ Read:
 - `documents/china/profile/preferences.md`
 - `documents/china/profile/evidence.md`
 
-If the profile is too sparse, stop and ask the user to run `/china setup`.
+If the profile is too sparse, stop and ask the user to run `$job-search setup --market china`.
 
 ## Step 3: Score Each Job
 
-Use the same scoring dimensions and weights as `markets/china/workflows/analyze-job.md`:
-
-- Technical match: 25%.
-- Experience match: 25%.
-- Domain match: 15%.
-- Communication fit: 10%.
-- Compensation/location fit: 10%.
-- Growth fit: 15%.
+Use the canonical dimensions, weights, veto handling, and state tools in
+`.claude/commands/rank.md`. The China rules below are market-specific gates and
+risk notes, not a second incompatible scoring or persistence system.
 
 Apply hard vetoes for:
 
@@ -53,6 +48,11 @@ Apply hard vetoes for:
 - Role type listed under `暂不考虑岗位`.
 
 ## Step 4: Write Ranking Report
+
+Use `tools/rank_state.py` exactly as required by `.claude/commands/rank.md` so
+matching China entries in `job_scraper/seen_jobs.json` move from `new` to
+`ranked` (or `expired`) and retain the canonical rank fields. Never rewrite the
+whole state file by hand. The report below is an additional China-market view.
 
 Write `markets/china/jobs/evaluated/ranking-YYYY-MM-DD.md`:
 
@@ -95,4 +95,4 @@ Ranked <N> jobs. Skipped <M> jobs due to insufficient JD detail.
 ## Step 5: Present Result
 
 Show the top five jobs, any vetoed jobs, and the report path. Remind the user
-that `/china apply <job-file>` creates materials for a selected job.
+that `$job-search apply --market china <job-file>` creates materials for a selected job.

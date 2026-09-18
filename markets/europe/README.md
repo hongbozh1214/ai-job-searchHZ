@@ -1,5 +1,10 @@
 # Europe market
 
+Run `$job-search setup --market europe` before the first search. The tracked
+`markets/europe/profile/preferences.md` file is only a template; personal
+preferences belong in the gitignored `documents/europe/profile/preferences.md`.
+Never write user data into the tracked template.
+
 Use this overlay for cross-border searches rather than a single country. Before searching, resolve:
 
 - included countries or regions;

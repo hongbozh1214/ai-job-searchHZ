@@ -5,31 +5,31 @@
 
 ## 使用方式
 
-在 Claude Code 中使用：
+在 OpenClaw 中使用统一入口：
 
 ```text
-/china setup
-/china scrape
-/china analyze markets/china/jobs/inbox/<job>.md
-/china apply markets/china/jobs/inbox/<job>.md
-/china rank
-/china interview markets/china/jobs/evaluated/<job>.md
+$job-search setup --market china
+$job-search scrape --market china
+$job-search analyze --market china markets/china/jobs/inbox/<job>.md
+$job-search apply --market china markets/china/jobs/inbox/<job>.md
+$job-search rank --market china
+$job-search interview --market china markets/china/jobs/evaluated/<job>.md
 ```
 
 ## 推荐流程
 
-1. 运行 `/china setup`，初始化并填写 `documents/china/profile/` 下的个人资料。
+1. 运行 `$job-search setup --market china`，初始化并填写 `documents/china/profile/` 下的个人资料。
    模板位于 `markets/china/profile/`（tracked），个人数据写入 `documents/china/profile/`
    （gitignored，不会提交到仓库）。
-2. 运行 `/china scrape`，从 BOSS 直聘、猎聘、智联招聘、前程无忧、脉脉、国聘、
+2. 运行 `$job-search scrape --market china`，从 BOSS 直聘、猎聘、智联招聘、前程无忧、脉脉、国聘、
    公司官网等公开来源低频搜索岗位。
 3. 如果公开页面可读取，工具会保存完整 JD；如果遇到登录、反爬或内容不完整，
    工具会保存待手动补全文件。
 4. 也可以手动复制岗位 JD 到 `markets/china/jobs/inbox/<company>-<role>.md`。
-5. 运行 `/china analyze <file>` 判断是否值得沟通或投递。
-6. 对值得推进的岗位运行 `/china apply <file>`，生成打招呼话术、招聘者私信、
+5. 运行 `$job-search analyze --market china <file>` 判断是否值得沟通或投递。
+6. 对值得推进的岗位运行 `$job-search apply --market china <file>`，生成打招呼话术、招聘者私信、
    中文求职信/邮件和简历修改建议。
-7. 面试前运行 `/china interview <file>` 准备常见问题、STAR/CAR 答案和反问问题。
+7. 面试前运行 `$job-search interview --market china <file>` 准备常见问题、STAR/CAR 答案和反问问题。
 
 长期申请状态可以继续记录在仓库根目录的 `job_search_tracker.csv`。
 
@@ -76,7 +76,7 @@
 - `jobs/inbox/`: 手动保存的岗位 JD。
 - `jobs/evaluated/`: 岗位评估、申请材料和排序报告输出。
 - `jobs/archived/`: 已处理岗位归档。
-- `workflows/`: `/china` 命令读取的具体工作流。
+- `workflows/`: `$job-search --market china` 路由读取的具体工作流。
 - `templates/`: 中国市场沟通、求职信和面试回答模板。
 
 

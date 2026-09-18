@@ -1,16 +1,16 @@
 import { describe, test, expect } from "bun:test";
+import { join } from "path";
 import { runCLI, parseJSON } from "./helpers";
 
 // Every case here is offline: `list` reads the registry only, and the `search`
 // and `detail` cases all fail argument or registry validation before any fetch.
 //
-// The registry itself is not fixed: company_pages.json is personal and gitignored,
-// so CI reads the committed example while a developer's checkout may not. Cases
-// that depend on the example's contents guard on `usingExampleRegistry` rather
-// than assuming it.
-
-const usingExampleRegistry = (stderr: string): boolean =>
-  stderr.includes("USING_EXAMPLE_REGISTRY");
+// Tests opt into the committed example explicitly. Production must never use it
+// implicitly when the personal registry is missing.
+const EXAMPLE_REGISTRY = join(import.meta.dir, "../../company_pages.example.json");
+const MISSING_REGISTRY = join(import.meta.dir, "definitely-not-a-registry.json");
+const runExampleCLI = (args: string[]) =>
+  runCLI(args, { COMPANY_PAGES_REGISTRY: EXAMPLE_REGISTRY });
 
 interface ListEntry {
   name: string;
@@ -41,24 +41,23 @@ describe("help and unknown commands", () => {
 
 describe("list", () => {
   test("emits the registry as JSON", async () => {
-    const r = await runCLI(["list"]);
+    const r = await runExampleCLI(["list"]);
     const out = parseJSON<{ results?: ListEntry[] } | ListEntry[]>(r);
     const entries = Array.isArray(out) ? out : (out.results ?? []);
     expect(entries.length).toBeGreaterThan(0);
   });
 
-  test("warns on stderr when falling back to the example registry", async () => {
-    const r = await runCLI(["list"]);
-    // The personal registry is gitignored, so CI always takes the fallback.
-    // If a developer has one locally, there is simply no warning to assert.
-    if (r.stderr) {
-      expect(r.stderr).toContain("USING_EXAMPLE_REGISTRY");
-    }
-    expect(r.exitCode).toBe(0);
+  test("fails closed when the personal registry is missing", async () => {
+    const r = await runCLI(["list"], { COMPANY_PAGES_REGISTRY: MISSING_REGISTRY });
+    expect(r.exitCode).toBe(1);
+    expect(r.stdout).toBe("");
+    const error = JSON.parse(r.stderr.split("\n").pop()!);
+    expect(error.code).toBe("NO_REGISTRY");
+    expect(error.error).toContain("never searched automatically");
   });
 
   test("every registry entry declares a known ats type", async () => {
-    const r = await runCLI(["list"]);
+    const r = await runExampleCLI(["list"]);
     const out = parseJSON<{ results?: ListEntry[] } | ListEntry[]>(r);
     const entries = Array.isArray(out) ? out : (out.results ?? []);
     const known = ["greenhouse", "lever", "smartrecruiters", "oracle", "generic"];
@@ -66,10 +65,7 @@ describe("list", () => {
   });
 
   test("the example registry demonstrates every supported ats type", async () => {
-    const r = await runCLI(["list"]);
-    // Only assert this against the shipped example. A developer with a personal
-    // company_pages.json is under no obligation to cover every ats type.
-    if (!usingExampleRegistry(r.stderr)) return;
+    const r = await runExampleCLI(["list"]);
     const out = parseJSON<{ results?: ListEntry[] } | ListEntry[]>(r);
     const entries = Array.isArray(out) ? out : (out.results ?? []);
     const seen = new Set(entries.map((e) => e.ats));
@@ -79,13 +75,13 @@ describe("list", () => {
   });
 
   test("table format renders a header rather than JSON", async () => {
-    const r = await runCLI(["list", "--format", "table"]);
+    const r = await runExampleCLI(["list", "--format", "table"]);
     expect(r.exitCode).toBe(0);
     expect(r.stdout.startsWith("{")).toBe(false);
   });
 
   test("an unrecognised format falls back to json instead of erroring", async () => {
-    const r = await runCLI(["list", "--format", "yaml"]);
+    const r = await runExampleCLI(["list", "--format", "yaml"]);
     expect(r.exitCode).toBe(0);
     expect(() => JSON.parse(r.stdout)).not.toThrow();
   });
@@ -99,13 +95,13 @@ describe("search argument validation", () => {
   });
 
   test("an unknown company is rejected before any network call", async () => {
-    const r = await runCLI(["search", "--company", "No Such Company AG"]);
+    const r = await runExampleCLI(["search", "--company", "No Such Company AG"]);
     expect(r.exitCode).toBe(1);
     expect(JSON.parse(r.stderr.split("\n").pop()!).code).toBe("COMPANY_NOT_FOUND");
   });
 
   test("-c is an alias for --company", async () => {
-    const r = await runCLI(["search", "-c", "No Such Company AG"]);
+    const r = await runExampleCLI(["search", "-c", "No Such Company AG"]);
     expect(JSON.parse(r.stderr.split("\n").pop()!).code).toBe("COMPANY_NOT_FOUND");
   });
 });
@@ -118,24 +114,24 @@ describe("detail argument validation", () => {
   });
 
   test("--company without --id exits 1", async () => {
-    const r = await runCLI(["detail", "--company", "Stripe"]);
+    const r = await runExampleCLI(["detail", "--company", "Example Greenhouse Employer"]);
     expect(r.exitCode).toBe(1);
     expect(JSON.parse(r.stderr.split("\n").pop()!).code).toBe("NO_ARGS");
   });
 
   test("an unknown company is reported, not silently fetched", async () => {
-    const r = await runCLI(["detail", "--company", "No Such Company AG", "--id", "1"]);
+    const r = await runExampleCLI(["detail", "--company", "No Such Company AG", "--id", "1"]);
     expect(r.exitCode).toBe(1);
     expect(JSON.parse(r.stderr.split("\n").pop()!).code).toBe("COMPANY_NOT_FOUND");
   });
 
   test("ats=generic has no detail API and says so", async () => {
-    const list = await runCLI(["list"]);
+    const list = await runExampleCLI(["list"]);
     const out = parseJSON<{ results?: ListEntry[] } | ListEntry[]>(list);
     const entries = Array.isArray(out) ? out : (out.results ?? []);
     const generic = entries.find((e) => e.ats === "generic");
     if (!generic) return; // a personal registry need not contain a generic entry
-    const r = await runCLI(["detail", "--company", generic.name, "--id", "1"]);
+    const r = await runExampleCLI(["detail", "--company", generic.name, "--id", "1"]);
     expect(r.exitCode).toBe(1);
     expect(JSON.parse(r.stderr.split("\n").pop()!).code).toBe("NO_DETAIL_API");
   });

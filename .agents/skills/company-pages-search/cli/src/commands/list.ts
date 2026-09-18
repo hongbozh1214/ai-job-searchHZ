@@ -1,4 +1,4 @@
-import { loadRegistry, writeError } from "../helpers.js"
+import { loadRegistry, writeCaughtError } from "../helpers.js"
 
 export interface ListOpts {
   format: "json" | "table" | "plain"
@@ -26,7 +26,7 @@ export async function runList(opts: ListOpts): Promise<number> {
     }
     return 0
   } catch (e) {
-    writeError(e instanceof Error ? e.message : String(e), "LIST_FAILED")
+    writeCaughtError(e, "LIST_FAILED")
     return 1
   }
 }

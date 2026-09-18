@@ -8,10 +8,14 @@ export interface CLIResult {
   exitCode: number;
 }
 
-export async function runCLI(args: string[]): Promise<CLIResult> {
+export async function runCLI(
+  args: string[],
+  env: Record<string, string> = {},
+): Promise<CLIResult> {
   const proc = Bun.spawn(["bun", "run", CLI_PATH, ...args], {
     stdout: "pipe",
     stderr: "pipe",
+    env: { ...process.env, ...env },
   });
 
   const [stdout, stderr, exitCode] = await Promise.all([

@@ -2,27 +2,26 @@
 name: company-pages-search
 version: 1.2.0
 description: >
-  Registry-driven lookups of specific companies' own career pages — for
-  corporates that don't syndicate all their positions to job boards (common
-  among Swiss corporates, banks, pharma, and orgs around Geneva/Lausanne).
+  Registry-driven lookups of specific employers' own career pages when they
+  do not syndicate every position to job boards.
   Trigger phrases: check company career pages, openings at <company>, watch
   these companies, any new roles at <company>, monitor <company>'s careers page.
 context: fork
 enabled: true  # set to false to keep this portal installed but have /scrape skip it
+metadata: {"openclaw":{"requires":{"bins":["bun"]}}}
 allowed-tools: Bash(bun run .agents/skills/company-pages-search/cli/src/cli.ts *)
 ---
 
 # Company Pages Search Skill
 
-Looks up job openings directly on a **registry of specific companies you care about**,
-rather than a generic job board. Many corporates — especially Swiss corporates, banks,
-pharma, and other orgs around Geneva/Lausanne — only post a subset of their open roles
-to LinkedIn/Indeed/etc, and keep the full list on their own `careers`/`jobs` page. This
+Looks up job openings directly on a **registry of specific employers you care about**,
+rather than a generic job board. Many employers post only a subset of their open roles
+to aggregators and keep the full list on their own `careers`/`jobs` page. This
 skill uses the public JSON APIs behind the four most common applicant-tracking systems
 (Greenhouse, Lever, SmartRecruiters, Oracle Cloud HCM) where a company uses one, and
 falls back to a best-effort HTML scrape (or a WebFetch by the agent) otherwise.
 
-Zero runtime dependencies — it runs with just `bun`.
+No package installation is needed; the CLI requires `bun`.
 
 ## ⚠️ Personal use only
 
@@ -34,9 +33,9 @@ on your own responsibility.
 
 The company list lives in **`company_pages.json` at the repo root** — personal, and
 gitignored (see `.gitignore`). A committed example lives at
-`.agents/skills/company-pages-search/company_pages.example.json`; if `company_pages.json`
-doesn't exist yet, the CLI automatically falls back to the example file and prints a
-stderr warning.
+`.agents/skills/company-pages-search/company_pages.example.json`. The example is
+documentation only and is never queried automatically. If the personal file is missing,
+the CLI exits with `NO_REGISTRY` before making a network request.
 
 **To start using this skill:** copy the example to the repo root and edit it.
 
@@ -44,15 +43,17 @@ stderr warning.
 cp .agents/skills/company-pages-search/company_pages.example.json company_pages.json
 ```
 
+Delete every example employer you did not intentionally select before running `search`.
+
 Each entry:
 
 ```json
 {
-  "name": "Stripe",
-  "careers_url": "https://stripe.com/jobs/search",
+  "name": "Example Employer",
+  "careers_url": "https://example.com/careers",
   "ats": "greenhouse",
-  "ats_id": "stripe",
-  "locations_filter": ["Geneva", "Lausanne", "Remote"],
+  "ats_id": "replace-with-greenhouse-board-token",
+  "locations_filter": ["Your city", "Remote"],
   "notes": "free text"
 }
 ```
@@ -84,8 +85,7 @@ Open the company's careers page and either:
    or `/postings/` is the `ats_id`. For **Oracle Cloud HCM** the XHR goes to
    `<tenant>.fa.<region>.oraclecloud.com/hcmRestApi/...` and carries
    `finder=findReqs;siteNumber=CX_1` — take the host and that `siteNumber` and join them
-   with a pipe. Oracle career sites are a large share of European bank and corporate
-   portals, and they render listings client-side, so without this adapter they fall to
+   with a pipe. Oracle career sites render listings client-side, so without this adapter they fall to
    `generic` and return nothing.
 3. If neither shows up, the company likely runs a custom/in-house careers page, or an
    ATS this skill doesn't have a direct integration for (Workday, SAP SuccessFactors,
@@ -136,7 +136,7 @@ detail API (see below).
 
 ## ⚠️ `generic` entries: WebFetch is the primary path, not the CLI scrape
 
-Many corporate/Swiss career pages are JS-rendered (React/Angular SPA) or sit behind
+Many employer career pages are JS-rendered (React/Angular SPA) or sit behind
 Cloudflare, and won't yield anything useful to a plain HTML fetch + regex link scrape.
 For every registry entry with `ats: "generic"`:
 
@@ -175,7 +175,7 @@ aborting the whole run — one bad registry entry never blocks the others.
 ## How this skill identifies itself
 
 Every request identifies honestly, as
-`company-pages-search-skill/1.0 (+https://github.com/MadsLorentzen/ai-job-search)`.
+`company-pages-search-skill/1.2 (+https://github.com/hongbozh1214/ai-job-searchHZ)`.
 Browser-shaped headers are **not** the default and are never sent speculatively.
 
 A `401`/`403` on a `generic` page means a bot filter, not a stated policy, so the CLI

@@ -1,6 +1,6 @@
 # 中国大陆岗位搜索查询
 
-`/china scrape` 使用本文件生成低频公开搜索查询。不要在这里放账号、cookie、
+`$job-search scrape --market china` 使用本文件生成低频公开搜索查询。不要在这里放账号、cookie、
 私聊内容或任何需要登录后才能访问的信息。
 
 ## 默认站点
@@ -19,7 +19,8 @@
 ## 查询模板
 
 将 `[ROLE]`、`[CITY]`、`[DOMAIN]`、`[SKILL]` 替换为
-`markets/china/profile/preferences.md` 和用户参数中的信息。
+`documents/china/profile/preferences.md` 和用户参数中的信息。`markets/china/profile/preferences.md`
+只是公开模板，不能作为用户实际偏好的来源。
 
 ### 优先岗位
 

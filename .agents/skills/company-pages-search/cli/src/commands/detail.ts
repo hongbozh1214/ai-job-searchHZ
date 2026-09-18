@@ -1,4 +1,4 @@
-import { loadRegistry, writeError } from "../helpers.js"
+import { loadRegistry, writeCaughtError, writeError } from "../helpers.js"
 import { fetchGreenhouseDetail, fetchLeverDetail, fetchSmartRecruitersDetail, fetchOracleDetail } from "../ats.js"
 
 export interface DetailOpts {
@@ -50,7 +50,7 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
     }
     return 0
   } catch (e) {
-    writeError(e instanceof Error ? e.message : String(e), "DETAIL_FAILED")
+    writeCaughtError(e, "DETAIL_FAILED")
     return 1
   }
 }

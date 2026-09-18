@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url"
 
 // Honest identification is the default on every request. This CLI says what it
 // is and where it comes from, exactly like the other portal CLIs in this repo.
-export const UA = "company-pages-search-skill/1.0 (+https://github.com/MadsLorentzen/ai-job-search)"
+export const UA = "company-pages-search-skill/1.2 (+https://github.com/hongbozh1214/ai-job-searchHZ)"
 
 // The browser-shaped request below is NOT the default. It runs only after
 // tools/robots_check.py has confirmed the site's published policy permits the
@@ -105,7 +105,20 @@ export function resolveSkillDir(
 const SKILL_DIR = resolveSkillDir(import.meta.url)
 const REPO_ROOT = path.resolve(SKILL_DIR, "../../..")
 const REGISTRY_PATH = path.join(REPO_ROOT, "company_pages.json")
-const EXAMPLE_REGISTRY_PATH = path.join(SKILL_DIR, "company_pages.example.json")
+
+export class CliError extends Error {
+  constructor(message: string, public readonly code: string) {
+    super(message)
+    this.name = "CliError"
+  }
+}
+
+export function writeCaughtError(error: unknown, fallbackCode: string): void {
+  writeError(
+    error instanceof Error ? error.message : String(error),
+    error instanceof CliError ? error.code : fallbackCode,
+  )
+}
 
 /**
  * The repo's canonical robots gate. Reimplementing RFC 9309 matching here would
@@ -203,20 +216,17 @@ export async function curlFallback(url: string, gate: RobotsGate = robotsCheckPy
 }
 
 /**
- * Load the personal registry (company_pages.json at repo root). Falls back to
- * the committed example registry with a stderr warning if the personal file
- * doesn't exist yet.
+ * Load the personal registry (company_pages.json at repo root). The committed
+ * example is documentation only and is never queried implicitly.
  */
-export async function loadRegistry(): Promise<RegistryEntry[]> {
-  let file = REGISTRY_PATH
+export async function loadRegistry(
+  file = process.env.COMPANY_PAGES_REGISTRY || REGISTRY_PATH,
+): Promise<RegistryEntry[]> {
   if (!existsSync(file)) {
-    process.stderr.write(
-      JSON.stringify({
-        warning: `No personal registry at ${REGISTRY_PATH}; falling back to the example registry. Copy company_pages.example.json to company_pages.json at the repo root and edit it.`,
-        code: "USING_EXAMPLE_REGISTRY",
-      }) + "\n",
+    throw new CliError(
+      `No personal registry at ${file}. Copy .agents/skills/company-pages-search/company_pages.example.json to company_pages.json at the repo root, then replace the examples with employers you intentionally selected. The example registry is never searched automatically.`,
+      "NO_REGISTRY",
     )
-    file = EXAMPLE_REGISTRY_PATH
   }
   const raw = await readFile(file, "utf-8")
   const parsed = JSON.parse(raw)

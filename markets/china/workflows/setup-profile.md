@@ -92,7 +92,7 @@ Report:
 - What was updated.
 - What evidence-backed selling points are strongest.
 - What information is still missing.
-- Which command to run next, usually `/china analyze markets/china/jobs/inbox/<job>.md`.
+- Which command to run next, usually `$job-search analyze --market china markets/china/jobs/inbox/<job>.md`.
 
 Remind the user that personal files under `documents/china/profile/` are
 gitignored — they will not appear in `git status` and will not be committed.

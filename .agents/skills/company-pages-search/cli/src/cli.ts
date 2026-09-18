@@ -1,8 +1,7 @@
 #!/usr/bin/env bun
 // Self-contained CLI for registry-driven lookups of specific companies' own
-// career pages — for corporates that don't syndicate all positions to job
-// boards (common among Swiss corporates, banks, pharma, orgs in Geneva/
-// Lausanne). No external CLI framework, so it runs anywhere `bun` is
+// career pages — for employers that don't syndicate all positions to job
+// boards. No external CLI framework, so it runs anywhere `bun` is
 // available with zero install beyond the repo clone.
 //
 // Personal use only. This reads companies' own public career APIs/pages;
@@ -60,9 +59,9 @@ USAGE
   bun run src/cli.ts detail --company <name> --id <job id> [--format json|plain]
 
 REGISTRY
-  Reads ./company_pages.json at the repo root (personal, gitignored). Falls back
-  to the committed .agents/skills/company-pages-search/company_pages.example.json
-  with a stderr warning if the personal file doesn't exist yet.
+  Reads ./company_pages.json at the repo root (personal, gitignored). If it is
+  missing, exits with NO_REGISTRY without querying the committed example file.
+  Copy the example, then replace its entries with employers you selected.
 
 SEARCH FLAGS
   --company, -c <name>    Restrict to one registry entry (exact name match).
@@ -78,9 +77,9 @@ DETAIL FLAGS
 
 EXAMPLES
   bun run src/cli.ts list --format table
-  bun run src/cli.ts search --company Stripe --format table
-  bun run src/cli.ts search --query "product" --location Geneva --format table
-  bun run src/cli.ts detail --company Stripe --id 7954688 --format plain
+  bun run src/cli.ts search --company "Example Greenhouse Employer" --format table
+  bun run src/cli.ts search --query "product" --location Berlin --format table
+  bun run src/cli.ts detail --company "Example Greenhouse Employer" --id 12345 --format plain
 
 Personal use only — reads companies' own public career APIs/pages; keep volume low.
 `

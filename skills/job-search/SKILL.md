@@ -10,6 +10,7 @@ Operate this repository as the job-search workspace. The user may invoke it with
 ```text
 $job-search setup
 $job-search scrape --market finland
+$job-search analyze --market china <URL, file, or pasted JD>
 $job-search rank --market europe
 $job-search apply --market china <URL, file, or pasted JD>
 $job-search interview --market finland <company/role>
@@ -19,21 +20,23 @@ Build personalization only from information the user deliberately supplies to th
 
 ## Choose the market
 
-For every `scrape`, `rank`, `apply`, or `interview` run, resolve exactly one market: `china`, `europe`, or `finland`.
+For every `setup`, `scrape`, `analyze`, `rank`, `apply`, or `interview` run, resolve exactly one market: `china`, `europe`, or `finland`.
 
 - Use the explicit `--market` value when supplied.
 - Otherwise reuse the market named by the user in the same message.
 - Otherwise ask one short question; do not silently search all markets.
 
-Read `markets/<market>/README.md`, `markets/<market>/profile/preferences.md`, and the market workflow relevant to the request before acting. Treat the shared candidate files under `.claude/skills/job-application-assistant/` as the factual source of truth. Market files may add translated wording and market preferences but may not contradict the shared facts.
+Read `markets/<market>/README.md`, the relevant market workflow when present, and the personal market preferences at `documents/<market>/profile/preferences.md` when that file exists. During `setup`, initialize a missing personal copy before reading it. Files under `markets/<market>/profile/` are tracked templates: use them only for initialization and never write personal data into them. Treat the shared candidate files under `.claude/skills/job-application-assistant/` as the factual source of truth. Personal market files may add translated wording and market preferences but may not contradict the shared facts.
 
 ## Route the operation
 
-- `setup`: read `.claude/commands/setup.md`. Populate the shared candidate evidence first, then the selected market preferences. Warn before writing personal data if `origin` is a public repository.
+- `setup`: read `.claude/commands/setup.md`, then `markets/<market>/workflows/setup-profile.md`. Populate the shared candidate evidence first, then initialize and edit only the selected market's personal copy under `documents/<market>/profile/`. Warn before writing personal data if `origin` is a public repository.
 - `scrape`: read `.claude/skills/job-scraper/SKILL.md`, then `markets/<market>/workflows/scrape-jobs.md`. Invoke only sources enabled for the selected market. Do not run every installed portal.
-- `rank`: read `.claude/commands/rank.md` plus the selected market's evaluation rules.
-- `apply`: read `.claude/commands/apply.md` plus the selected market's application conventions. Draft only; never submit or send without a separate explicit authorization.
-- `outcome`, `interview`, `expand`, `upskill`, and `html-report`: follow the corresponding canonical file under `.claude/commands/` or `.claude/skills/`, then apply the selected market overlay where relevant.
+- `analyze`: for China, follow `markets/china/workflows/analyze-job.md`; for Europe or Finland, assess the supplied posting against the shared candidate evidence and `markets/<market>/evaluation.md` without changing ranking state.
+- `rank`: read `.claude/commands/rank.md` plus the selected market's evaluation rules. For China also follow `markets/china/workflows/rank-jobs.md` and keep canonical `job_scraper/seen_jobs.json` state synchronized as that workflow specifies.
+- `apply`: read `.claude/commands/apply.md` plus the selected market's application conventions. For China also follow `markets/china/workflows/apply-job.md`. Draft only; never submit or send without a separate explicit authorization.
+- `interview`: read `.claude/commands/interview.md`. For China also follow `markets/china/workflows/interview-prep.md`.
+- `outcome`, `expand`, `upskill`, and `html-report`: follow the corresponding canonical file under `.claude/commands/` or `.claude/skills/`, then apply the selected market overlay where relevant.
 
 Interpret upstream `/command` notation as workflow names, not as a requirement to run Claude Code. Read [references/openclaw-adapter.md](references/openclaw-adapter.md) for tool translation, reviewer behavior, and privacy rules.
 

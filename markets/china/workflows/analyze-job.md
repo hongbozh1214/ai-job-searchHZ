@@ -24,7 +24,7 @@ Read:
 - `documents/china/profile/evidence.md`
 
 If profile files are still sparse, continue only if the job can be evaluated
-honestly. Otherwise ask the user to run `/china setup` first.
+honestly. Otherwise ask the user to run `$job-search setup --market china` first.
 
 ## Step 2: Extract Job Facts
 

@@ -115,6 +115,6 @@ No API — `search` does an HTML `GET` on `careers_url`, strips tags, and patter
 `<a>` links for job-ish keywords in the href or link text. This catches simple static
 career pages but **will return nothing useful** for JS-rendered SPAs (React/Angular) or
 sites behind Cloudflare/bot-protection, which is common for Workday, SAP
-SuccessFactors, and custom-built Swiss corporate career pages. See SKILL.md's
+SuccessFactors, and custom-built employer career pages. See SKILL.md's
 "`generic` entries: WebFetch is the primary path" section — the CLI scrape is a cheap
 first try, not the guaranteed path, for this ATS type.

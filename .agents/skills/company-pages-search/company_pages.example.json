@@ -1,58 +1,42 @@
 [
   {
-    "name": "Stripe",
-    "careers_url": "https://stripe.com/jobs/search",
+    "name": "Example Greenhouse Employer",
+    "careers_url": "https://example.com/careers",
     "ats": "greenhouse",
-    "ats_id": "stripe",
-    "locations_filter": ["Remote"],
-    "notes": "Real, public Greenhouse board — verified 2026-08-01. Used here only as a worked example of the greenhouse ats type."
-  },
-  {
-    "name": "Coinbase",
-    "careers_url": "https://www.coinbase.com/careers/positions",
-    "ats": "greenhouse",
-    "ats_id": "coinbase",
-    "locations_filter": ["Remote"],
-    "notes": "Real, public Greenhouse board — verified 2026-08-01."
-  },
-  {
-    "name": "Palantir",
-    "careers_url": "https://www.palantir.com/careers/",
-    "ats": "lever",
-    "ats_id": "palantir",
+    "ats_id": "replace-with-greenhouse-board-token",
     "locations_filter": [],
-    "notes": "Real, public Lever board — verified 2026-08-01. Used here as a worked example of the lever ats type."
+    "notes": "FICTIONAL schema example. Replace every field before use."
   },
   {
-    "name": "Visa",
-    "careers_url": "https://www.visa.com/careers.html",
+    "name": "Example Lever Employer",
+    "careers_url": "https://example.com/careers",
+    "ats": "lever",
+    "ats_id": "replace-with-lever-company-token",
+    "locations_filter": [],
+    "notes": "FICTIONAL schema example. Replace every field before use."
+  },
+  {
+    "name": "Example SmartRecruiters Employer",
+    "careers_url": "https://example.com/careers",
     "ats": "smartrecruiters",
-    "ats_id": "Visa",
-    "locations_filter": ["Geneva", "Remote"],
-    "notes": "Real, public SmartRecruiters company id — verified 2026-08-01. Used here as a worked example of the smartrecruiters ats type."
+    "ats_id": "replace-with-smartrecruiters-company-id",
+    "locations_filter": [],
+    "notes": "FICTIONAL schema example. Replace every field before use."
   },
   {
-    "name": "Union Bancaire Privée",
-    "careers_url": "https://www.ubp.com/en/careers",
+    "name": "Example Oracle Employer",
+    "careers_url": "https://example.com/careers",
     "ats": "oracle",
-    "ats_id": "iaadtu.fa.ocs.oraclecloud.eu|CX_1",
-    "locations_filter": ["Geneva", "Zurich"],
-    "notes": "Real, public Oracle Cloud HCM (Candidate Experience) site — verified 2026-08-05, 43 live requisitions. Worked example of the oracle ats type: ats_id is \"<host>|<siteNumber>\", because the API host is tenant-specific and cannot be derived from the company name. Without this adapter such sites fall to ats=generic and return nothing, since the portal renders its listings client-side."
+    "ats_id": "replace.fa.region.oraclecloud.com|CX_1",
+    "locations_filter": [],
+    "notes": "FICTIONAL schema example. Replace the host and site number before use."
   },
   {
-    "name": "Placeholder Genève Pharma SA",
+    "name": "Example Generic Employer",
     "careers_url": "https://example.com/careers",
     "ats": "generic",
     "ats_id": "",
-    "locations_filter": ["Geneva", "Lausanne"],
-    "notes": "FICTIONAL placeholder. Swiss corporates and pharma often don't syndicate to job boards at all — for ats=generic the agent should WebFetch careers_url directly rather than rely on the CLI's best-effort scrape."
-  },
-  {
-    "name": "Placeholder Lausanne Bank SA",
-    "careers_url": "https://example.com/en/careers",
-    "ats": "generic",
-    "ats_id": "",
-    "locations_filter": ["Lausanne", "Geneva", "Remote"],
-    "notes": "FICTIONAL placeholder for a private/retail bank careers page with no public ATS API — generic fallback path."
+    "locations_filter": [],
+    "notes": "FICTIONAL schema example. Replace it before use; for ats=generic prefer WebFetch/WebSearch when the CLI's shallow HTML scan cannot see rendered jobs."
   }
 ]

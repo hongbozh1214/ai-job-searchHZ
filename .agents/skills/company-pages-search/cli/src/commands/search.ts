@@ -1,4 +1,4 @@
-import { loadRegistry, matchesFilters, writeError, type NormalizedJob, type RegistryEntry } from "../helpers.js"
+import { loadRegistry, matchesFilters, writeCaughtError, writeError, type NormalizedJob, type RegistryEntry } from "../helpers.js"
 import { fetchGreenhouse, fetchLever, fetchSmartRecruiters, fetchOracle, fetchGeneric } from "../ats.js"
 
 export interface SearchOpts {
@@ -87,7 +87,7 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
     }
     return 0
   } catch (e) {
-    writeError(e instanceof Error ? e.message : String(e), "SEARCH_FAILED")
+    writeCaughtError(e, "SEARCH_FAILED")
     return 1
   }
 }
