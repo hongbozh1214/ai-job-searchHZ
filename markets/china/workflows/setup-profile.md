@@ -39,7 +39,7 @@ Read these personal files once:
 - `documents/china/profile/preferences.md`
 - `documents/china/profile/evidence.md`
 
-Also read `CLAUDE.md` and `.claude/skills/job-application-assistant/01-candidate-profile.md`
+Also read `documents/profile/CLAUDE.md` and `documents/profile/01-candidate-profile.md`
 if they contain populated profile data. Use them as references, not as files to
 edit.
 

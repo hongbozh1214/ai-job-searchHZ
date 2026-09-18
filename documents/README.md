@@ -1,6 +1,16 @@
 # Documents Folder
 
-This folder holds your actual career documents. The `/setup` command reads everything here and uses it to populate the candidate skill files under `.claude/skills/job-application-assistant/`. It is safe to re-run `/setup` as you add new documents — it merges intelligently and will never overwrite existing content without asking you first.
+This folder holds your actual career documents and local profile. The `/setup`
+command reads the source materials here and writes the resulting candidate profile
+only under `documents/profile/` (plus the selected market's
+`documents/<market>/profile/` preferences). The tracked files under `.claude/`,
+`markets/`, and `cv/` are framework templates and rules; they are never populated
+with personal data.
+
+`documents/profile/` is intentionally gitignored. It is the one shared candidate
+profile for this checkout, so every market workflow and every OpenClaw agent using
+this checkout reads the same local facts. Keep each agent in a separate checkout or
+workspace if agents represent different people.
 
 ---
 
@@ -8,6 +18,17 @@ This folder holds your actual career documents. The `/setup` command reads every
 
 ```
 documents/
+├── profile/                    # Local candidate profile (gitignored)
+│   ├── CLAUDE.md               # Local identity, facts, and workflow context
+│   ├── 01-candidate-profile.md # Canonical structured candidate facts
+│   ├── 02-behavioral-profile.md
+│   ├── 03-writing-style.md
+│   ├── 04-job-evaluation.md
+│   ├── 05-cv-templates.md
+│   ├── 06-cover-letter-templates.md
+│   ├── 07-interview-prep.md
+│   ├── search-queries.md
+│   └── cv/main_example.tex    # Local master CV baseline
 ├── cv/                          # Your CV files (PDF or LaTeX)
 ├── linkedin/                    # LinkedIn profile export (PDF)
 ├── diplomas/                    # Degree certificates and transcripts
@@ -208,10 +229,15 @@ Application folders may also contain **`interview_prep_<stage>.md`** files writt
 
 The command is designed to be re-run as your document collection grows. Each run:
 
-1. Reads the current state of all skill files
+1. Reads the current state of the local files under `documents/profile/`
 2. Compares extracted document content against what's already there
 3. Only proposes changes for content that is genuinely new or conflicting
 4. Never silently overwrites — conflicts are shown explicitly for your decision
+
+On a pre-local-profile checkout, run `/setup` once and choose the migration path.
+It copies any populated tracked profile files into `documents/profile/` before
+clearing the tracked files back to templates. Do not commit or push the old
+personalized tracked files while migrating a public fork.
 
 **When to re-run:**
 - After adding a new LinkedIn export

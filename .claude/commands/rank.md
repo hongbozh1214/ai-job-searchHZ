@@ -35,8 +35,9 @@ It applies the status filter (`new`, or any status with `--all`), the tracker ex
 If it reports no candidates, say so ("Nothing new to rank - run /scrape to find fresh postings") and stop. If it exits with "not found", tell the user to run `/scrape` first and stop.
 
 Then read the scoring framework and profile **once**:
-- `.claude/skills/job-application-assistant/04-job-evaluation.md`
-- `.claude/skills/job-application-assistant/01-candidate-profile.md`
+- `.claude/skills/job-application-assistant/04-job-evaluation.md` (rules/template)
+- `documents/profile/04-job-evaluation.md` (local preferences)
+- `documents/profile/01-candidate-profile.md` (local candidate facts)
 
 State how many jobs will be ranked and how many are deferred before proceeding.
 

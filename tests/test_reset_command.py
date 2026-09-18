@@ -12,16 +12,9 @@ while being documented in documents/README.md and protected as personal
 data by tools/security_guards.py (review finding F26, 2026-08-19), so a
 reset silently kept the user's hand-pasted job postings.
 
-Profile scope: the same class of gap, one scope over. /setup Step 3
-populates six skill files, and /reset profile cleared four of them -
-`04-job-evaluation.md` (the user's match areas, career goals, financial
-situation and schedule constraints) was listed by name as containing
-"framework rules, not candidate data", and `job-scraper/search-queries.md`
-(their role titles, city and commute tiers) appeared nowhere in reset.md.
-Both are tracked and unignored, and CI's placeholder-integrity job guards
-04-job-evaluation.md under "personal data may have been committed", so a
-"blank" profile left /rank scoring against the old skills and /scrape
-running the old city.
+Profile scope now clears the complete gitignored `documents/profile/` directory.
+The tracked files are templates and are deliberately not reset; this prevents
+`/reset` from rewriting the public framework or destroying methodology updates.
 
 Both file lists are derived - the documents folders from the repository
 tree, the profile files from /setup Step 3's own headings - so a new drop
@@ -94,20 +87,13 @@ def section(text: str, start: str, end: str) -> str:
 def setup_step3_skill_files():
     """Skill files /setup Step 3 populates, derived from its own headings.
 
-    Step 3's targets are written as '### <n>. <verb> `<target>`', where the
-    target is either a bare filename resolved against .claude/skills/ or a
-    repo-relative path. Non-skill targets (CLAUDE.md, cv/main_example.tex)
-    are dropped: /reset profile's scope is skill files only.
+    Step 3's targets are written as '### <n>. <verb> `<target>`'. Local profile
+    targets are retained so the reset contract covers the complete local profile.
     """
     step3 = section(SETUP.read_text(encoding="utf-8"), "## Step 3:", "## Step 4:")
     files = set()
     for target in re.findall(r"^###\s+\d+\.\s+\w+\s+`([^`]+)`", step3, re.MULTILINE):
-        if (REPO / target).exists():
-            if target.startswith(".claude/skills/"):
-                files.add(Path(target).name)
-            continue
-        matches = list((REPO / ".claude" / "skills").glob(f"*/{target}"))
-        if matches:
+        if target.startswith("documents/profile/"):
             files.add(Path(target).name)
     return files
 

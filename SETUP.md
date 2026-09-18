@@ -172,12 +172,11 @@ Or manually: fork on GitHub, then clone your fork.
 > under your GitHub identity, on a repo where you cannot delete it (#389).
 
 > **Before you go further: forks are public.** GitHub cannot make a fork of a public
-> repository private, and `/setup` (section 6) writes your personal data into **tracked**
-> files — pushing those commits to a fork publishes them. If this copy is for your own
-> job search rather than for contributing, prefer a **private repository** with this repo
-> as `upstream`: see section 8, step 1 for the exact commands and why committing your
-> personalization there is still the right move. Everything else in this guide works
-> identically either way.
+> repository private. This branch uses a local-profile mode: `/setup` writes personal
+> data only under the gitignored `documents/profile/` and
+> `documents/<market>/profile/` directories. Keep those paths ignored and never
+> force-add them. A private remote is optional; if you need one, create a new private
+> repository (not a fork) and keep this repository as `upstream`.
 
 ## 3. Install job search CLI dependencies
 Run these from the repository root.
@@ -224,20 +223,21 @@ Claude will offer three paths:
 - **Path B (single CV import):** Share one CV/resume by mentioning the file with `@` or pasting the text. Claude extracts it and asks follow-up questions for anything missing.
 - **Path C (interview mode):** Answer structured interview questions section by section.
 
-All three paths produce the same result: fully populated profile files.
+All three paths produce the same result: fully populated local profile files under
+`documents/profile/`.
 
 ### What gets populated
 
 | File | Content |
 |------|---------|
-| `CLAUDE.md` | Your full candidate profile |
-| `01-candidate-profile.md` | Structured education, experience, skills |
-| `02-behavioral-profile.md` | Behavioral assessment |
-| `04-job-evaluation.md` | Personalized skill match areas and career goals |
-| `05-cv-templates.md` | Profile statement templates for your background |
-| `07-interview-prep.md` | STAR examples from your experience |
-| `cv/main_example.tex` | Your LaTeX CV with actual details |
-| `search-queries.md` | Job search queries for `/scrape` |
+| `documents/profile/CLAUDE.md` | Your local workflow context and identity |
+| `documents/profile/01-candidate-profile.md` | Structured education, experience, skills |
+| `documents/profile/02-behavioral-profile.md` | Behavioral assessment |
+| `documents/profile/04-job-evaluation.md` | Personalized skill match areas and career goals |
+| `documents/profile/05-cv-templates.md` | Profile statement templates for your background |
+| `documents/profile/07-interview-prep.md` | STAR examples from your experience |
+| `documents/profile/cv/main_example.tex` | Your local LaTeX CV baseline |
+| `documents/profile/search-queries.md` | Job search queries for `/scrape` |
 
 ### Re-running setup
 
@@ -309,7 +309,13 @@ Upstream keeps improving the methodology files your fork has personalized, so pl
 
 **Prefer releases over raw `master`.** Tagged [releases](../../releases) are vetted checkpoints, each described in [CHANGELOG.md](CHANGELOG.md). Updating to a tag pulls a stable, documented state instead of whatever `master` happens to be mid-review. Fetch tags with `git fetch upstream --tags` and merge a release (for example `git merge v1.0.0`) when you want stability; pull `master` directly only when you specifically want the latest unreleased changes. The steps below apply either way - substitute the release tag for `upstream/master` where you see it.
 
-1. **Commit your personalization - but know where those commits land.** `/setup` edits CLAUDE.md and the profile skill files in place; those edits are *yours*, and committing them is what lets updates merge cleanly. But a GitHub **fork of this repo is public** - forks of public repositories cannot be made private - so anything you commit *and push to a fork* is visible to anyone. If you want your profile in a remote at all, don't push it to a fork: create a **private** repository, push there, and add this repo as the `upstream` remote (`git remote add upstream https://github.com/MadsLorentzen/ai-job-search.git`) to keep receiving updates. Committing locally without pushing is also fine. The genuinely sensitive files (tracker, salary data, `documents/`, application archives) are gitignored and never enter git either way. An uncommitted working tree is the most common reason `git pull` refuses to merge at all (`Your local changes ... would be overwritten`).
+1. **Keep the local profile out of git.** `/setup` writes candidate facts only under
+   `documents/profile/` and market preferences under `documents/<market>/profile/`.
+   They are gitignored and must never be force-added. Set a public checkout's push
+   URL to a disabled value for an additional guard:
+   `git remote set-url --push origin DISABLED`. If you need a remotely backed profile,
+   create a new private repository (not a fork), push there, and add this public repo
+   as `upstream`. The tracked framework files can then be updated normally.
 2. **Preview what changed before pulling:**
    ```bash
    git remote add upstream https://github.com/MadsLorentzen/ai-job-search.git   # first time only, if you cloned your own fork
@@ -327,7 +333,11 @@ Upstream keeps improving the methodology files your fork has personalized, so pl
      ```
 
      Forks also inherit a `.github/workflows/upstream-watch.yml` that runs this weekly and writes the result into a single rolling issue (it no-ops on the upstream template itself, and stays disabled on a fork until you enable Actions).
-3. **Merge normally.** `git merge upstream/master` (or `git pull`) three-way-merges upstream's edits around your personalization; because methodology edits rarely touch the lines `/setup` filled in, most updates land cleanly. A conflict in a personalized file is a *feature*, not a failure — it means upstream changed methodology in a section you customized, and the version marker plus its changelog commit tell you why. Resolve by keeping your data and adopting the methodology change around it.
+3. **Merge normally.** `git merge upstream/master` (or `git pull`) updates the
+   tracked framework without touching the local profile. If a methodology template
+   changes, re-run `/setup` or copy the relevant new template section into the local
+   profile after reviewing the diff; candidate facts remain local and are not merge
+   conflicts.
 
 ## Troubleshooting
 

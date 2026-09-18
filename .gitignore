@@ -73,7 +73,11 @@ cover_letters/chinese/cover_*.tex
 cover_letters/chinese/Cover_*.tex
 !cover_letters/chinese/cover_example.tex
 
-# documents/ subfolder contents are personal — only README and folder structure are tracked
+# documents/ subfolder contents are personal — only README, folder structure, and
+# explicit .gitkeep files are tracked. The root profile directory is the shared
+# candidate profile for all markets; market-specific preferences remain below
+# documents/<market>/profile/.
+documents/profile/**
 documents/cv/**
 documents/linkedin/**
 documents/diplomas/**

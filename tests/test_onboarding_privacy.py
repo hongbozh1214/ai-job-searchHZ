@@ -36,15 +36,15 @@ class TestForkWarningsAtTheDecisionPoint(unittest.TestCase):
             re.compile(r"public", re.IGNORECASE),
             f"{where}'s fork section must say the fork will be public",
         )
-        self.assertIn(
-            "personal data",
+        self.assertRegex(
             body,
-            f"{where}'s fork section must say /setup writes personal data into tracked files",
+            re.compile(r"documents/profile|candidate data", re.IGNORECASE),
+            f"{where}'s fork section must identify the local-only profile boundary",
         )
         self.assertRegex(
             body,
-            re.compile(r"section 8|§8|#8-pulling", re.IGNORECASE),
-            f"{where}'s fork section must point at SETUP.md section 8's private-remote recipe",
+            re.compile(r"private repository|not a fork", re.IGNORECASE),
+            f"{where}'s fork section must explain the optional private-repository path",
         )
 
     def test_readme_quick_start_warns_next_to_the_fork_command(self):
@@ -79,6 +79,13 @@ class TestSetupChecksOriginBeforeWriting(unittest.TestCase):
             text[max(0, preflight_at - 2000) : preflight_at + 2000].lower(),
             "the preflight must be about public visibility, not just remote presence",
         )
+
+    def test_setup_declares_local_profile_targets(self):
+        text = SETUP_COMMAND.read_text(encoding="utf-8")
+        step3 = text[text.index("## Step 3:") : text.index("## Step 4:")]
+        self.assertIn("documents/profile/01-candidate-profile.md", step3)
+        self.assertIn("documents/profile/CLAUDE.md", step3)
+        self.assertIn("tracked counterparts are never write", step3)
 
 
 if __name__ == "__main__":

@@ -81,6 +81,7 @@ REQUIRED_IGNORE_RULES = [
     # /apply also recognizes the uppercase Cover_* naming variant.
     "cover_letters/Cover_*.*",
     "documents/cv/**",
+    "documents/profile/**",
     "documents/linkedin/**",
     "documents/diplomas/**",
     "documents/references/**",

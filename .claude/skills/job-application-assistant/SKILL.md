@@ -54,15 +54,19 @@ When the user provides a job posting (URL or text), follow this workflow:
 
 ## Reference Files
 
+The tracked files in this directory define methodology and placeholders. Candidate
+facts are read from the gitignored local copies under `documents/profile/`; setup
+must initialize them before any application workflow runs.
+
 | File | Purpose |
 |------|---------|
-| `01-candidate-profile.md` | Education, experience, skills, publications, awards |
-| `02-behavioral-profile.md` | Behavioral assessment, strengths, ideal environments |
-| `03-writing-style.md` | Tone, structure, do's and don'ts |
-| `04-job-evaluation.md` | Scoring framework for job fit |
-| `05-cv-templates.md` | LaTeX CV structure and tailoring rules |
-| `06-cover-letter-templates.md` | LaTeX cover letter structure and tailoring rules |
-| `07-interview-prep.md` | STAR examples, tough questions, roleplay guidelines |
+| `documents/profile/01-candidate-profile.md` | Education, experience, skills, publications, awards |
+| `documents/profile/02-behavioral-profile.md` | Behavioral assessment, strengths, ideal environments |
+| `documents/profile/03-writing-style.md` | Candidate tone and style; tracked counterpart supplies rules |
+| `documents/profile/04-job-evaluation.md` | Candidate preferences; tracked counterpart supplies scoring rules |
+| `documents/profile/05-cv-templates.md` | Local contact/profile data; tracked counterpart supplies tailoring rules |
+| `documents/profile/06-cover-letter-templates.md` | Local contact/signature data; tracked counterpart supplies structure |
+| `documents/profile/07-interview-prep.md` | STAR examples, tough questions, roleplay guidelines |
 | `08-application-forms.md` | Portal free-text fields: self-introduction, project entries, character-limited pitches |
 | `09-web-research.md` | Fetching postings and company pages: trust boundary, the WebFetch 403 fallback, escalation order, claim verification |
 

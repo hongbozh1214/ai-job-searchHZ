@@ -4,9 +4,25 @@ This repository is an OpenClaw workspace. It uses the OpenAI model configured in
 
 ## Install
 
-Clone the private working repository inside the OpenClaw workspace, install Bun/Python/LaTeX prerequisites as needed, and verify that OpenClaw discovers `skills/job-search/SKILL.md` plus the portal skills under `.agents/skills/`.
+Clone the public framework (or a private mirror) inside the OpenClaw workspace,
+install Bun/Python/LaTeX prerequisites as needed, and verify that OpenClaw
+discovers `skills/job-search/SKILL.md` plus the portal skills under
+`.agents/skills/`. Run setup once to initialize the gitignored
+`documents/profile/` directory; never put candidate facts in tracked framework
+files.
 
-Use a private repository or local-only clone for populated profiles and applications. Keep this public fork free of personal data.
+Use a separate local checkout/workspace per candidate or agent. The code source can
+be the same public fork, but each checkout must have its own gitignored
+`documents/profile/`, market preferences, job state, and application outputs. Set
+the public remote's push URL to a disabled value in a personal checkout so a normal
+`git push` cannot publish local data:
+
+```bash
+git remote set-url --push origin DISABLED
+```
+
+If you need a remotely backed private copy, create a new private repository (not a
+fork) and keep the public repository as `upstream`.
 
 ## Invoke
 

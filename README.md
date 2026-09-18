@@ -80,12 +80,11 @@ cd ai-job-search
 
 > [!IMPORTANT]
 > **A fork of this repo is always public** — GitHub does not allow private forks of
-> public repositories — and `/setup` (step 3 below) writes your personal data (name,
-> contact details, employment history, salary expectations) into **tracked** files.
-> If this copy is for your own job search rather than for contributing changes back,
-> use a **private repository** with this repo as `upstream` instead — the two-minute
-> recipe is in [SETUP.md section 8](SETUP.md#8-pulling-upstream-updates-into-your-fork),
-> and every update workflow works identically. Fork only to contribute.
+> public repositories. This fork's setup is local-profile safe: `/setup` writes
+> candidate data only under the gitignored `documents/profile/` directory and market
+> preferences under `documents/<market>/profile/`. Keep those paths ignored and never
+> force-add them. If you want a remotely backed copy of the profile, create a new
+> private repository (not a fork) and keep this public repository as `upstream`.
 
 ### 2. Install job search tools
 
@@ -118,7 +117,7 @@ claude
 /setup
 ```
 
-`/setup` offers three paths: read your `documents/` folder if you have one populated (CV PDF, LinkedIn export, diplomas, reference letters, past applications), import a single CV pasted in chat, or walk through an interview. It auto-detects what you have and asks. Documents-folder mode is idempotent and safe to re-run as you add more material; see `documents/README.md` for the layout.
+`/setup` offers three paths: read your `documents/` folder if you have one populated (CV PDF, LinkedIn export, diplomas, reference letters, past applications), import a single CV pasted in chat, or walk through an interview. It auto-detects what you have and asks. Documents-folder mode is idempotent and safe to re-run as you add more material; all resulting candidate facts stay in `documents/profile/`, while `documents/README.md` explains the layout.
 
 ### 4. Search for jobs
 
@@ -165,7 +164,7 @@ Postings are treated as untrusted input (the workflow follows no instructions em
 
 ```
 ai-job-search/
-├── CLAUDE.md                          # Main candidate profile + workflow rules
+├── CLAUDE.md                          # Framework rules (profile data is local)
 ├── .claude/
 │   ├── commands/
 │   │   ├── apply.md                   # /apply workflow (drafter-reviewer)
@@ -183,7 +182,7 @@ ai-job-search/
 │   ├── skills/
 │   │   ├── job-application-assistant/  # Core application skill
 │   │   │   ├── SKILL.md               # Skill definition
-│   │   │   ├── 01-candidate-profile.md # Your education, experience, skills
+│   │   │   ├── 01-candidate-profile.md # Candidate-profile template/methodology
 │   │   │   ├── 02-behavioral-profile.md# PI/DISC/personality assessment
 │   │   │   ├── 03-writing-style.md    # Tone, structure, do's and don'ts
 │   │   │   ├── 04-job-evaluation.md   # Scoring framework for job fit
@@ -201,7 +200,7 @@ ai-job-search/
 │   ├── linkedin-search/               # LinkedIn public job listings (country-agnostic)
 │   └── freehire-search/               # freehire.me tech job aggregator (multi-market, REST API)
 ├── cv/
-│   └── main_example.tex               # moderncv LaTeX template
+│   └── main_example.tex               # neutral moderncv template
 ├── cover_letters/
 │   ├── cover.cls                      # Custom cover letter LaTeX class
 │   ├── cover_example.tex              # Example cover letter (structural reference + CI smoke test)
@@ -210,6 +209,7 @@ ai-job-search/
 │   └── README.md                      # Folder layout instructions
 ├── documents/                         # Career source materials for /setup Path A and /expand
 │   ├── README.md                      # Folder layout instructions
+│   ├── profile/                        # Local candidate profile (gitignored)
 │   ├── cv/                            # Master CV (PDF or .tex)
 │   ├── linkedin/                      # LinkedIn profile export (PDF)
 │   ├── diplomas/                      # Degree certificates and transcripts
@@ -266,13 +266,13 @@ If you prefer editing files directly instead of using `/setup`:
 
 | File | What to change |
 |------|---------------|
-| `CLAUDE.md` | Your full profile (name, education, experience, skills, goals) |
-| `01-candidate-profile.md` | Structured version of your CV data |
-| `02-behavioral-profile.md` | Your behavioral assessment or self-assessment |
-| `04-job-evaluation.md` | Skill match areas, career goals, motivation filters |
-| `05-cv-templates.md` | Profile statement templates for different role types |
-| `07-interview-prep.md` | Your STAR examples from actual experience |
-| `search-queries.md` | Job search queries for your skills and location |
+| `documents/profile/CLAUDE.md` | Your local workflow context and identity |
+| `documents/profile/01-candidate-profile.md` | Structured version of your CV data |
+| `documents/profile/02-behavioral-profile.md` | Your behavioral assessment or self-assessment |
+| `documents/profile/04-job-evaluation.md` | Skill match areas, career goals, motivation filters |
+| `documents/profile/05-cv-templates.md` | Profile statement templates for different role types |
+| `documents/profile/07-interview-prep.md` | Your STAR examples from actual experience |
+| `documents/profile/search-queries.md` | Job search queries for your skills and location |
 
 ### Updating your search queries
 

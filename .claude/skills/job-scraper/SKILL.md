@@ -40,11 +40,17 @@ Optional arguments:
 
 1. Read `job_scraper/seen_jobs.json` (create if missing - start with `{"seen": {}}`)
 2. Read `job_search_tracker.csv` to extract already-applied companies+roles
-3. Read `search-queries.md` (this directory) for the search strategy
+3. Read `documents/profile/search-queries.md` for the local search strategy. Use
+   `.claude/skills/job-scraper/search-queries.md` only as the tracked template when
+   initializing a missing local copy.
 
 ### Step 1: Search
 
-Read `search-queries.md` (this directory) for the search strategy. By default, run the top 3 priority query categories. If the user said "broad", run all categories. If the user specified a focus area (e.g. "data science"), prioritize queries from that category.
+Read `documents/profile/search-queries.md` for the search strategy. By default,
+run the top 3 priority query categories. If the user said "broad", run all
+categories. If the user specified a focus area (e.g. "data science"), prioritize
+queries from that category. Stop and ask the user to run setup if the local file
+is missing.
 
 **Use the installed CLI tools as the primary search mechanism.** Fall back to `WebSearch` only for portals that do not have a CLI skill, or if `bun` is unavailable on the system.
 
@@ -77,11 +83,12 @@ If a CLI tool exits with a non-zero code, log the error message and continue —
 #### 1c. WebSearch fallback
 
 Use `WebSearch` for:
-- Portals listed in `search-queries.md` that do **not** have a corresponding directory under `.agents/skills/`
+- Portals listed in `documents/profile/search-queries.md` that do **not** have a corresponding directory under `.agents/skills/`
 - Any portal whose CLI fails at runtime
 - When bun is unavailable (Step 1a failed)
 
-Use the site-specific query strings from `search-queries.md` directly as WebSearch queries for these portals.
+Use the site-specific query strings from `documents/profile/search-queries.md`
+directly as WebSearch queries for these portals.
 
 Tag each fallback result as WebSearch-sourced, keeping the portal tag when the fallback stands in for an installed portal whose CLI failed. Step 4 persists this as the entry's `source`, and Step 5 reports which portals ran on the fallback this run.
 
@@ -137,7 +144,16 @@ For each new job, do a rapid fit check (NOT the full evaluation from `04-job-eva
 - **Medium match**: Role is adjacent to your experience
 - **Low match**: Role requires significant skills you lack
 
-**Language override:** before assigning a match level, check the posting against `04-job-evaluation.md`'s Language Gate (a required language you haven't declared at all in your CLAUDE.md Languages table). A required language that's entirely undeclared overrides skill fit: mark it **Low** regardless of how well the skills align, and name it in the highlight bullets so it isn't buried under an otherwise-good-looking match. A **declared** language at a requirement that reads higher than your declared level is *not* an override — score fit normally, but add a red-flag bullet under that job's highlights (Step 5) quoting the posting's requirement next to your declared level, so the gap is visible without being auto-downgraded.
+**Language override:** before assigning a match level, check the posting against
+`documents/profile/04-job-evaluation.md`'s Language Gate (a required language you
+haven't declared at all in `documents/profile/CLAUDE.md`'s Languages table). A
+required language that's entirely undeclared overrides skill fit: mark it **Low**
+regardless of how well the skills align, and name it in the highlight bullets so it
+isn't buried under an otherwise-good-looking match. A **declared** language at a
+requirement that reads higher than your declared level is *not* an override — score
+fit normally, but add a red-flag bullet under that job's highlights (Step 5)
+quoting the posting's requirement next to your declared level, so the gap is
+visible without being auto-downgraded.
 
 ### Step 4: Deduplicate & Store
 
