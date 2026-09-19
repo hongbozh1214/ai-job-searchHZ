@@ -82,4 +82,8 @@ $job-search interview --market china markets/china/jobs/evaluated/<job>.md
 
 ## OpenClaw invocation
 
-In OpenClaw, use `$job-search <operation> --market china`. The shared files under `.claude/skills/job-application-assistant/` remain the factual source of truth; China profile files provide translated wording and market-specific preferences only.
+In OpenClaw, use `$job-search <operation> --market china`. The shared local files
+under `documents/profile/` remain the factual source of truth; China profile files
+provide translated wording and market-specific preferences only. The corresponding
+tracked files under `.claude/` and `markets/china/profile/` are methodology and
+blank templates, not candidate evidence.

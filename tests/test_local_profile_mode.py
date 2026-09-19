@@ -21,6 +21,10 @@ class LocalProfileIgnoreTests(unittest.TestCase):
         guard = read("tools/security_guards.py")
         self.assertIn('"documents/profile/**"', guard)
 
+    def test_personal_company_registry_is_ignored_and_guarded(self):
+        self.assertIn("company_pages.json", read(".gitignore"))
+        self.assertIn('"company_pages.json"', read("tools/security_guards.py"))
+
 
 class LocalProfileWorkflowTests(unittest.TestCase):
     def test_setup_writes_only_local_profile_targets(self):
@@ -46,6 +50,42 @@ class LocalProfileWorkflowTests(unittest.TestCase):
         for file, needle in required.items():
             with self.subTest(file=file):
                 self.assertIn(needle, read(file))
+
+    def test_direct_application_skill_uses_local_candidate_evidence(self):
+        skill = read(".claude/skills/job-application-assistant/SKILL.md")
+        for needle in (
+            "documents/profile/01-candidate-profile.md",
+            "documents/profile/04-job-evaluation.md",
+            "documents/profile/05-cv-templates.md",
+            "documents/profile/06-cover-letter-templates.md",
+            "documents/profile/07-interview-prep.md",
+            "documents/profile/cv/main_example.tex",
+        ):
+            self.assertIn(needle, skill)
+        self.assertIn("tracked files", skill)
+        self.assertIn("never candidate evidence", skill)
+
+    def test_apply_final_verification_uses_local_context(self):
+        apply = read(".claude/commands/apply.md")
+        final = apply.split("## Step 6: Present Final Output", 1)[1]
+        self.assertIn("documents/profile/CLAUDE.md", final)
+        self.assertIn("tracked framework template", final)
+
+    def test_market_docs_do_not_call_tracked_templates_candidate_truth(self):
+        files = (
+            "markets/README.md",
+            "markets/china/README.md",
+            "markets/europe/workflows/setup-profile.md",
+            "markets/finland/workflows/setup-profile.md",
+        )
+        for file in files:
+            with self.subTest(file=file):
+                text = read(file)
+                self.assertIn("documents/profile/", text)
+                self.assertNotIn(
+                    "under `.claude/skills/job-application-assistant/` remains the source of truth",
+                    text,
+                )
 
     def test_reset_never_rewrites_tracked_framework_files(self):
         reset = read(".claude/commands/reset.md")

@@ -16,26 +16,39 @@ framework_version: 1.3.4
 
 When the user provides a job posting (URL or text), follow this workflow:
 
+Before starting, require the gitignored local profile under `documents/profile/`.
+If `documents/profile/01-candidate-profile.md` or
+`documents/profile/CLAUDE.md` is missing, stop and ask the user to run `/setup` (or
+`$job-search setup --market <market>` in OpenClaw). The tracked files in this
+skill directory are methodology and blank templates, never candidate evidence.
+
 ### Step 1: Research & Evaluate Fit
 - Fetch the job posting content (use WebFetch for URLs). **A 403 is not a dead end** - follow the escalation order in `09-web-research.md` before concluding a page is unavailable, and prefer the employer's own careers posting over an aggregator listing
 - Keep the **full posting text verbatim** for Step 3b to archive - never a summary
 - Analyze the posting for required competencies, keywords, and priorities
 - Research the company (website, LinkedIn, mission, recent news), per `09-web-research.md`
-- Score the posting against the candidate's profile using the framework in `04-job-evaluation.md`
+- Read the scoring rules from `04-job-evaluation.md`, the candidate-specific
+  preferences from `documents/profile/04-job-evaluation.md`, and the candidate
+  facts from `documents/profile/01-candidate-profile.md`
+- Score the posting against those local facts and preferences
 - Present the evaluation table and verdict
 - Suggest whether the candidate should call the employer before applying (see `04-job-evaluation.md` for guidance)
 - Ask the user if they want to proceed with an application
 
 ### Step 2: Tailor CV
 - Before writing either document, derive `<company>_<role>` once by the **Subfolder naming** rule in `documents/README.md`; reuse that exact value for the CV, cover letter, and Step 3b archive path. If the rule says to stop because the derived name is empty, stop before creating any file.
-- Read the most relevant existing CV variant from `cv/` as a starting point
-- Follow the guidelines in `05-cv-templates.md`
+- Use `documents/profile/cv/main_example.tex` as the factual master CV and read
+  only a role-specific file under `cv/` for structure when one already exists
+- Follow the methodology in `05-cv-templates.md` and the candidate-specific
+  statements/contact data in `documents/profile/05-cv-templates.md`
 - Create `cv/main_<company>_<role>.tex` with tailored content
 - Adjust: profile statement, skills section, experience bullet emphasis, section order
 
 ### Step 3: Write Cover Letter
-- Follow the writing style rules in `03-writing-style.md` (critical: no em-dashes, no cliches)
-- Follow the template structure in `06-cover-letter-templates.md`
+- Follow the rules in `03-writing-style.md` plus the candidate-specific patterns
+  in `documents/profile/03-writing-style.md` (critical: no em-dashes, no cliches)
+- Follow the structure in `06-cover-letter-templates.md` plus the local contact,
+  signature, and approved patterns in `documents/profile/06-cover-letter-templates.md`
 - Create `cover_letters/cover_<company>_<role>.tex`
 - Ensure the letter connects specific experience to the role requirements
 
@@ -45,7 +58,8 @@ When the user provides a job posting (URL or text), follow this workflow:
 - This step exists here because `/scrape` Step 5 routes straight into this skill. Without it, that path writes two documents and records nothing.
 
 ### Step 4: Interview Preparation
-- Follow the framework in `07-interview-prep.md`
+- Follow the framework in `07-interview-prep.md` and use only the candidate's
+  STAR material from `documents/profile/07-interview-prep.md`
 - Prepare STAR-format answers for likely questions
 - Identify role-specific talking points
 - Draft questions the candidate should ask the interviewer

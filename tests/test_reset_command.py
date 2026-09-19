@@ -50,7 +50,9 @@ def tracked_document_subfolders():
 class TestResetCoversEveryDocumentsSubfolder(unittest.TestCase):
     def setUp(self):
         self.text = RESET.read_text(encoding="utf-8")
-        self.folders = tracked_document_subfolders()
+        # `profile` has its own separately confirmed destructive scope. A
+        # documents-only reset must preserve it.
+        self.folders = tracked_document_subfolders() - {"profile"}
         # The tree must actually contain the folders this test is about,
         # or the assertions below would pass vacuously.
         self.assertGreaterEqual(len(self.folders), 5, self.folders)
@@ -76,6 +78,11 @@ class TestResetCoversEveryDocumentsSubfolder(unittest.TestCase):
             'subfolders, yet the command then claims "The `documents/` '
             f'folder is now empty.": {missing}',
         )
+
+    def test_documents_scope_does_not_delete_the_local_profile(self):
+        execution = section(self.text, "### Documents reset", "## Step 4:")
+        self.assertNotIn("rm -f documents/profile/", execution)
+        self.assertNotIn("rm -rf documents/profile/", execution)
 
 
 def section(text: str, start: str, end: str) -> str:

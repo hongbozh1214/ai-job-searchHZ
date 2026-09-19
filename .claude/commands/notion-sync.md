@@ -27,10 +27,21 @@ Follow these steps **in order**.
 
 The command is **silently optional**: when the destination is not reachable, the outcome is one clear message and a clean exit - nothing else in the framework notices this command exists.
 
-1. Check that Notion MCP tools are available in this session (tool names starting with `mcp__notion__` or similar). Determine this from the session's own tool list **only** - never by running shell commands like `claude mcp list`, which would interrupt the user with a permission prompt before the graceful exit. If the tools are not available, stop and tell the user how to connect:
-   > Notion MCP isn't connected. Run `claude mcp add --transport http notion https://mcp.notion.com/mcp`, then start a **new session** (servers added mid-session are only picked up on restart), run `/mcp` there to complete the OAuth login, and re-run `/notion-sync`.
-2. Verify the connection with one cheap call (e.g. a workspace search). An auth error → tell the user to re-authenticate via `/mcp` and stop. Never retry in a loop.
-3. The Notion MCP server is interactively authenticated, so "connected but not authenticable right now" (expired OAuth, headless/CI context where the login flow cannot run) gets the same graceful exit as "not configured": state the reason in one line and stop. This includes the configured-but-unauthenticated state where the server exposes only its auth handshake and no data tools - **never initiate the OAuth flow from this command and never ask whether to authenticate now**; the one line points at `/mcp` and the command ends there. Authenticating is the user's move, made outside this command.
+1. Check that authenticated Notion tools are available in this session. Tool names
+   vary by runtime, so determine this from the session's own tool list **only**;
+   never run a provider-specific CLI command as a probe. If the tools are not
+   available, stop with one runtime-neutral instruction:
+   > Notion is not connected. Connect Notion through your agent runtime's app or MCP settings, start a new session if required, complete OAuth there, and re-run `/notion-sync`.
+2. Verify the connection with one cheap call (for example, a workspace search).
+   On an authentication error, tell the user to reconnect Notion through the same
+   runtime settings and stop. Never retry in a loop.
+3. The Notion connection is interactively authenticated, so "connected but not
+   authenticable right now" (expired OAuth or a headless/CI context where login
+   cannot run) gets the same graceful exit as "not configured": state the reason
+   in one line and stop. If only an authentication handshake is available and no
+   data tools are exposed, **never initiate OAuth from this workflow and never ask
+   whether to authenticate now**. Authentication is the user's action outside the
+   workflow.
 
 ---
 

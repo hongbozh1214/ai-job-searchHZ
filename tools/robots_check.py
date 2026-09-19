@@ -4,24 +4,25 @@
 The retry exists to get past bot-filtering firewalls on sites whose robots.txt
 permits access. It is never used to override a site that has said no.
 
-WebFetch identifies itself as Claude-User and honors robots.txt, so a 403 has
-two very different causes: a WAF default on a site whose published policy
-allows access, or a site that has actually declined. This tells them apart.
+The reference WebFetch client identifies itself as Claude-User, while other
+agent runtimes may use another named user agent. A 403 therefore has two very
+different causes: a WAF default on a site whose published policy allows access,
+or a site that has actually declined. This tells them apart.
 
 Rules implemented (RFC 9309), deliberately on the cautious side:
   * longest-match wins; on equal specificity Disallow wins
-  * a Disallow for either "*" or "Claude-User" blocks the retry
+  * a Disallow for either "*" or the selected client user agent blocks the retry
   * blank lines inside a record do not end it (Python's robotparser drops
     rules in that case, which fails open - see tests)
   * 404 means no published policy, which is permission
   * any other failure to read robots.txt leaves permission unconfirmed,
     and the retry does not happen
 
-Usage:  python3 tools/robots_check.py <url>
+Usage:  python3 tools/robots_check.py <url> [--user-agent <name>]
 Exit 0 = the retry may proceed. Exit 1 = do not retry; go to escalation step 3.
 """
 
-import re, subprocess, sys
+import argparse, re, subprocess, sys
 from urllib.parse import urlsplit, unquote
 
 BROWSER = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
@@ -106,14 +107,14 @@ def allowed(text, agent, path):
             best_len, best_allow = n, is_allow      # ties -> Disallow wins (cautious)
     return True if best_len < 0 else best_allow
 
-def gate(url):
+def gate(url, agent='Claude-User'):
     parts = urlsplit(url)
     path = unquote(parts.path) or '/'
     if parts.query:
         path += '?' + parts.query
     robots = f'{parts.scheme}://{parts.netloc}/robots.txt'
     body, last = None, 'no attempt'
-    for ua in ('Claude-User', BROWSER):
+    for ua in (agent, BROWSER):
         try:
             text, code = _fetch(robots, ua)
         except Exception as e:
@@ -128,15 +129,22 @@ def gate(url):
         last = 'HTTP %d' % code
     if body is None:
         return 1, 'UNCONFIRMED (%s) - do not retry, go to step 3' % last
-    for a in ('Claude-User', '*'):
+    for a in (agent, '*'):
         if not allowed(body, a, path):
             return 1, f'DISALLOWED for {a} - do not retry, go to step 3'
     return 0, 'ALLOWED - robots.txt permits this path'
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print('usage: python3 tools/robots_check.py <url>', file=sys.stderr)
-        sys.exit(2)
-    rc, msg = gate(sys.argv[1])
+    # Help must not exit 0: callers use this program as a permission gate and
+    # run the browser-header retry only when the exit status is zero.
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('url')
+    parser.add_argument(
+        '--user-agent',
+        default='Claude-User',
+        help='named user agent used by the initial fetch client',
+    )
+    args = parser.parse_args()
+    rc, msg = gate(args.url, args.user_agent)
     print(msg)
     sys.exit(rc)

@@ -4,15 +4,21 @@ Step-by-step instructions for getting the AI Job Search framework running.
 
 ## 1. Prerequisites
 
-### Claude Code
+### Agent runtime
 
-Install Claude Code (Anthropic's CLI for Claude):
+This fork is designed to run in OpenClaw with the OpenAI model already configured
+for the job-search agent. Follow [`OPENCLAW_SETUP.md`](OPENCLAW_SETUP.md) to attach
+this repository as that agent's workspace.
+
+The canonical workflow files also remain compatible with Claude Code. If you
+choose that optional runtime, install its CLI:
 
 ```bash
 npm install -g @anthropic-ai/claude-code
 ```
 
-You'll need an Anthropic API key or a Claude Pro/Team subscription. See the [Claude Code docs](https://docs.anthropic.com/en/docs/claude-code) for details.
+Claude Code requires its own supported subscription or API credentials. This is
+not required for the OpenClaw/OpenAI path.
 
 ### Python
 
@@ -101,7 +107,9 @@ EOF
 
 The full MiKTeX installer bundles every CTAN package and works out of the box, but the smaller [Basic MiKTeX](https://miktex.org/download) installer (`basic-miktex-*.exe`) only ships a minimal package set and needs a couple of one-time settings before the stock templates compile.
 
-By default, MiKTeX installs missing packages on demand but pops up a GUI prompt for each one — which blocks non-interactive terminals (including Claude Code's Bash tool). Turn that into a silent auto-install instead:
+By default, MiKTeX installs missing packages on demand but pops up a GUI prompt
+for each one — which blocks non-interactive agent terminals. Turn that into a
+silent auto-install instead:
 
 ```powershell
 initexmf --admin --set-config-value=[MPM]AutoInstall=1
@@ -153,26 +161,22 @@ The default extractor is **pypdf** (BSD, `pip install pypdf`). Poppler `pdftotex
 
 If a command still uses `pdftotext -layout`, it must pass `-enc UTF-8` as well. If **neither** extractor is available, `/apply` skips the mechanical check with a warning and falls back to a visual keyword review — everything else works normally.
 
-## 2. Fork and clone
+## 2. Clone this branch
 
 ```bash
-gh repo fork MadsLorentzen/ai-job-search --clone
+git clone --branch feature/local-profile-mode --single-branch \
+  https://github.com/hongbozh1214/ai-job-searchHZ.git ai-job-search
 cd ai-job-search
-gh repo set-default <your-github-username>/ai-job-search
+git remote set-url --push origin DISABLED
 ```
 
-Or manually: fork on GitHub, then clone your fork.
+The push URL is disabled only for the personal runtime checkout; `git fetch origin`
+continues to work. Do not disable push in a development checkout where you intend to
+contribute framework changes.
 
-> **The `set-default` line is not optional.** `gh repo fork --clone` sets the
-> **upstream** repo as gh's default repository ("The `upstream` remote will be set as
-> the default remote repository" — `gh repo fork --help`), and gh uses the default for
-> **creating issues and PRs**. Without it, any later `gh issue create` run from this
-> clone — by you or by an agent you have asked to track your applications — silently
-> files on the upstream **public** tracker, publishing whatever the issue contains
-> under your GitHub identity, on a repo where you cannot delete it (#389).
-
-> **Before you go further: forks are public.** GitHub cannot make a fork of a public
-> repository private. This branch uses a local-profile mode: `/setup` writes personal
+> **Before you go further: this repository and its forks are public.** GitHub
+> cannot make a fork of a public repository private. This branch uses a
+> local-profile mode: `/setup` writes personal
 > data only under the gitignored `documents/profile/` and
 > `documents/<market>/profile/` directories. Keep those paths ignored and never
 > force-add them. A private remote is optional; if you need one, create a new private
@@ -184,7 +188,7 @@ Run these from the repository root.
 - PowerShell:
 
 ```powershell
-$tools = @("jobbank-search", "jobdanmark-search", "jobindex-search", "jobnet-search", "linkedin-search", "freehire-search")
+$tools = @("company-pages-search", "jobbank-search", "jobdanmark-search", "jobindex-search", "jobnet-search", "linkedin-search", "freehire-search")
 foreach ($tool in $tools) {
   Push-Location ".agents/skills/$tool/cli"
   bun install
@@ -194,7 +198,7 @@ foreach ($tool in $tools) {
 
 - Bash / zsh / Git Bash:
 ```bash
-for tool in jobbank-search jobdanmark-search jobindex-search jobnet-search linkedin-search freehire-search; do
+for tool in company-pages-search jobbank-search jobdanmark-search jobindex-search jobnet-search linkedin-search freehire-search; do
   (cd .agents/skills/$tool/cli && bun install)
 done
 ```
@@ -205,22 +209,26 @@ If you're outside Denmark, you can generate an equivalent search skill for your 
 
 ## 4. Run the setup interview
 
-Start Claude Code in the repository:
+For OpenClaw, use the dedicated job-search agent and select one market explicitly:
+
+```text
+$job-search setup --market finland
+# or: china / europe
+```
+
+For the optional Claude Code-compatible path, start that runtime in the repository
+and invoke the canonical workflow:
 
 ```bash
 claude
-```
-
-Then run the onboarding:
-
-```
+# Then inside that session:
 /setup
 ```
 
-Claude will offer three paths:
+The onboarding agent will offer three paths:
 
-- **Path A (documents folder):** Add your CV, LinkedIn export, diplomas, references, or past applications under `documents/`. Claude reads and cross-references them before proposing profile updates. This is best when you have several source files.
-- **Path B (single CV import):** Share one CV/resume by mentioning the file with `@` or pasting the text. Claude extracts it and asks follow-up questions for anything missing.
+- **Path A (documents folder):** Add your CV, LinkedIn export, diplomas, references, or past applications under `documents/`. The agent reads and cross-references them before proposing profile updates. This is best when you have several source files.
+- **Path B (single CV import):** Share one CV/resume by mentioning the file with `@` or pasting the text. The agent extracts it and asks follow-up questions for anything missing.
 - **Path C (interview mode):** Answer structured interview questions section by section.
 
 All three paths produce the same result: fully populated local profile files under
@@ -278,7 +286,7 @@ Or paste the job description directly:
 /apply [paste job posting text here]
 ```
 
-Claude will:
+The agent will:
 1. Evaluate the fit against your profile
 2. Ask if you want to proceed
 3. Draft a tailored CV and cover letter
@@ -355,7 +363,7 @@ Make sure Bun is installed and you ran `bun install` in each CLI directory. The 
 ### Fonts not found in cover letter
 The cover letter template expects fonts in `cover_letters/OpenFonts/fonts/`. Make sure this directory exists and contains the Lato and Raleway font files.
 
-### Stale `.claude/settings.local.json` from an older clone
+### Claude Code compatibility: stale `.claude/settings.local.json`
 Shared Claude Code permissions now live in `.claude/settings.json` (scoped to `bun run`, `python salary_lookup.py`, and `python3 salary_lookup.py`). Earlier versions of this repo committed a broader `.claude/settings.local.json` that pre-approved `Bash(curl:*)`, `Bash(python:*)` and `Bash(bun:*)`. If you cloned before that change, git leaves the old file behind in your working copy, and its permissions still apply on top of `settings.json`. Delete it (or trim it to your own personal overrides):
 
 ```bash

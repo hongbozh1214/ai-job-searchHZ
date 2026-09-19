@@ -97,6 +97,22 @@ class TestAgentSelection(unittest.TestCase):
         self.assertFalse(allowed(body, "Claude-User", "/z"))
         self.assertFalse(allowed(body, "A", "/z"))
 
+    def test_gate_honors_a_runtime_specific_user_agent(self):
+        import robots_check
+
+        body = "User-agent: OpenClaw-Fetch\nDisallow: /private\n"
+        original = robots_check._fetch
+        robots_check._fetch = lambda url, ua: (body, 200)
+        try:
+            rc, msg = robots_check.gate(
+                "https://example.test/private/job",
+                agent="OpenClaw-Fetch",
+            )
+        finally:
+            robots_check._fetch = original
+        self.assertEqual(rc, 1)
+        self.assertIn("OpenClaw-Fetch", msg)
+
 
 class TestCli(unittest.TestCase):
     def test_module_is_importable_and_cli_exists(self):
@@ -236,7 +252,7 @@ class TestArgumentHardening(unittest.TestCase):
             text=True,
             timeout=60,
         )
-        self.assertEqual(out.returncode, 1)
+        self.assertNotEqual(out.returncode, 0)
         self.assertNotIn("Usage: curl", out.stdout)
 
     def test_gate_never_passes_the_caller_url_through_to_curl(self):

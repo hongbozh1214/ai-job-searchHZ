@@ -29,7 +29,7 @@ def section(text: str, heading: str) -> str:
     return match.group(1) if match else ""
 
 
-class TestForkWarningsAtTheDecisionPoint(unittest.TestCase):
+class TestPublicRepositoryWarningsAtTheDecisionPoint(unittest.TestCase):
     def assert_warns(self, body: str, where: str):
         self.assertRegex(
             body,
@@ -47,14 +47,16 @@ class TestForkWarningsAtTheDecisionPoint(unittest.TestCase):
             f"{where}'s fork section must explain the optional private-repository path",
         )
 
-    def test_readme_quick_start_warns_next_to_the_fork_command(self):
-        body = section(README.read_text(encoding="utf-8"), "### 1. Fork and clone")
-        self.assertIn("gh repo fork", body, "sanity: the fork command lives in this section")
+    def test_readme_quick_start_warns_next_to_the_clone_command(self):
+        body = section(README.read_text(encoding="utf-8"), "### 1. Clone this branch")
+        self.assertIn("feature/local-profile-mode", body)
+        self.assertIn("hongbozh1214/ai-job-searchHZ", body)
         self.assert_warns(body, "README")
 
-    def test_setup_guide_warns_next_to_the_fork_command(self):
-        body = section(SETUP_GUIDE.read_text(encoding="utf-8"), "## 2. Fork and clone")
-        self.assertIn("gh repo fork", body, "sanity: the fork command lives in this section")
+    def test_setup_guide_warns_next_to_the_clone_command(self):
+        body = section(SETUP_GUIDE.read_text(encoding="utf-8"), "## 2. Clone this branch")
+        self.assertIn("feature/local-profile-mode", body)
+        self.assertIn("hongbozh1214/ai-job-searchHZ", body)
         self.assert_warns(body, "SETUP.md")
 
 

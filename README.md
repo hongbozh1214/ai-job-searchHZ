@@ -12,9 +12,15 @@
 
 [![CI](https://github.com/MadsLorentzen/ai-job-search/actions/workflows/ci.yml/badge.svg)](https://github.com/MadsLorentzen/ai-job-search/actions/workflows/ci.yml)
 
-An AI-powered job application framework built on [Claude Code](https://claude.com/claude-code). Fork it, fill in your profile, and let Claude evaluate job postings, tailor your CV, write cover letters, and prepare you for interviews.
+An AI-powered job application framework for local agent runtimes. This fork adds
+an OpenClaw/OpenAI entry point, three market overlays (`china`, `europe`, and
+`finland`), and a gitignored local profile mode. Use it to evaluate postings,
+tailor CVs, write cover letters, and prepare for interviews without committing
+candidate data to the public framework repository.
 
-> Note: This is an independent open-source project and is not affiliated with, endorsed by, sponsored by, or maintained by Anthropic. Anthropic and Claude Code are referenced only to describe the toolchain this workflow uses.
+> Note: This is an independent open-source project. Runtime and provider names
+> are used only to document compatibility; no provider endorses or maintains this
+> fork.
 >
 > This project has **no affiliated cryptocurrency, token, or paid sponsorship program**. Anything claiming otherwise is unauthorized and should be treated as a scam. The only ways to support the project are the Ko-fi link below and contributing on GitHub.
 
@@ -39,7 +45,11 @@ Sixty-nine tailored applications, twenty first interviews, and one signed contra
 
 ## What this is
 
-A structured workflow that turns Claude Code into a full-stack job application assistant. The core workflow (self-profiling, fit evaluation, and the drafter-reviewer application pipeline) is **language- and country-agnostic**. The job portal search skills are built for the Danish market (Jobindex, Jobnet, Akademikernes Jobbank, etc.), but the pattern is designed to be swapped for your local job boards.
+A structured workflow that turns a capable local agent into a full-stack job
+application assistant. The core workflow (self-profiling, fit evaluation, and the
+drafter-reviewer application pipeline) is **language- and country-agnostic**. This
+fork routes it through OpenClaw and adds China, Europe, and Finland overlays while
+retaining the original Danish portal skills as disabled examples.
 
 ```
 /setup          /scrape              /apply <url>
@@ -61,7 +71,11 @@ The framework encodes career guidance best practices, including structured evalu
 
 ## Prerequisites
 
-- [Claude Code](https://claude.com/claude-code) (CLI). Claude Code has no free tier: you need a Claude Pro/Max/Team subscription or Anthropic API credits (pay-per-token, usually cheaper for occasional use). Using a different agent tool (Codex, Antigravity, Gemini CLI)? Start at [`AGENTS.md`](AGENTS.md) - the portal search skills work there out of the box, and [community forks](https://github.com/MadsLorentzen/ai-job-search/discussions/78) adapt the full workflow.
+- An agent runtime with workspace file access, shell execution, and web/search
+  capabilities. For this fork, use OpenClaw with its configured OpenAI model and
+  follow [`OPENCLAW_SETUP.md`](OPENCLAW_SETUP.md). The canonical workflow files
+  remain compatible with Claude Code and can be adapted by other runtimes through
+  [`AGENTS.md`](AGENTS.md).
 - Python 3.10+
 - [Bun](https://bun.sh) (for job search CLI tools)
 - LaTeX distribution with `lualatex` and `xelatex`: [TeX Live](https://tug.org/texlive/), [MacTeX](https://tug.org/mactex/), [TinyTeX](https://yihui.org/tinytex/), or [MiKTeX](https://miktex.org/). The CV compiles with `lualatex` (pdflatex often fails on modern MiKTeX installs with `fontawesome5` font-expansion errors); the cover letter compiles with `xelatex` because `cover.cls` requires `fontspec`. If using a minimal TeX install such as TinyTeX or BasicTeX, install the extra packages listed in [SETUP.md](SETUP.md#minimal-tex-install-tinytexbasictex).
@@ -71,27 +85,35 @@ The framework encodes career guidance best practices, including structured evalu
 
 > 🎥 **Prefer to see it in action first?** [The Next New Thing did a hands-on walkthrough](https://www.youtube.com/watch?v=HoVxjMNFYv4) of how the workflow is actually used, from setup to a finished application (recorded August 2026 - commands may have evolved since).
 
-### 1. Fork and clone
+### 1. Clone this branch
 
 ```bash
-gh repo fork MadsLorentzen/ai-job-search --clone
+git clone --branch feature/local-profile-mode --single-branch \
+  https://github.com/hongbozh1214/ai-job-searchHZ.git ai-job-search
 cd ai-job-search
 ```
 
 > [!IMPORTANT]
-> **A fork of this repo is always public** — GitHub does not allow private forks of
-> public repositories. This fork's setup is local-profile safe: `/setup` writes
+> **This repository and any fork of it are public.** GitHub does not allow a
+> private fork of a public repository. This branch's setup is local-profile safe:
+> `/setup` writes
 > candidate data only under the gitignored `documents/profile/` directory and market
 > preferences under `documents/<market>/profile/`. Keep those paths ignored and never
 > force-add them. If you want a remotely backed copy of the profile, create a new
 > private repository (not a fork) and keep this public repository as `upstream`.
+
+For a personal runtime checkout, disable accidental pushes while preserving fetch:
+
+```bash
+git remote set-url --push origin DISABLED
+```
 
 ### 2. Install job search tools
 
 PowerShell:
 
 ```powershell
-$tools = @("jobbank-search", "jobdanmark-search", "jobindex-search", "jobnet-search", "linkedin-search", "freehire-search")
+$tools = @("company-pages-search", "jobbank-search", "jobdanmark-search", "jobindex-search", "jobnet-search", "linkedin-search", "freehire-search")
 foreach ($tool in $tools) {
   Push-Location ".agents/skills/$tool/cli"
   bun install
@@ -102,22 +124,32 @@ foreach ($tool in $tools) {
 Bash / zsh / Git Bash:
 
 ```bash
-for tool in jobbank-search jobdanmark-search jobindex-search jobnet-search linkedin-search freehire-search; do
+for tool in company-pages-search jobbank-search jobdanmark-search jobindex-search jobnet-search linkedin-search freehire-search; do
   (cd .agents/skills/$tool/cli && bun install)
 done
 ```
 
 For `linkedin-search` and `freehire-search` the install is optional: both have zero runtime dependencies and run with plain `bun`; `bun install` only pulls TypeScript dev types.
 
-### 3. Set up your profile
+### 3. Set up your local profile
 
-```bash
-claude
-# Then inside Claude Code:
-/setup
+In the OpenClaw conversation for the dedicated job-search agent, run one market at
+a time:
+
+```text
+$job-search setup --market finland
+# or: china / europe
 ```
 
-`/setup` offers three paths: read your `documents/` folder if you have one populated (CV PDF, LinkedIn export, diplomas, reference letters, past applications), import a single CV pasted in chat, or walk through an interview. It auto-detects what you have and asks. Documents-folder mode is idempotent and safe to re-run as you add more material; all resulting candidate facts stay in `documents/profile/`, while `documents/README.md` explains the layout.
+The setup workflow offers three paths: read a populated `documents/` folder (CV
+PDF, LinkedIn export, diplomas, reference letters, past applications), import one
+CV pasted in chat, or walk through an interview. It auto-detects what is present
+and asks. Documents-folder mode is idempotent and safe to re-run as you add more
+material; all resulting candidate facts stay in `documents/profile/`. See
+`documents/README.md` for the layout and `OPENCLAW_SETUP.md` for agent creation.
+
+Claude Code compatibility is retained: start that runtime in the repository and
+run `/setup`. The same local-profile privacy boundary applies.
 
 ### 4. Search for jobs
 
@@ -244,7 +276,10 @@ The `/apply` command runs a **drafter-reviewer workflow** with mandatory PDF com
 3. **Draft** a tailored CV and cover letter in LaTeX
 4. **Spawn a reviewer agent** that researches the company and critiques the drafts
 5. **Revise** based on the reviewer's feedback
-6. **Compile and inspect** both PDFs: lualatex for the CV, xelatex for the cover letter. Claude reads the rendered pages and iterates on the LaTeX until the CV is exactly 2 pages with no orphaned entry titles, and the cover letter is exactly 1 page with the signature visible and fonts consistent.
+6. **Compile and inspect** both PDFs: lualatex for the CV, xelatex for the cover
+   letter. The active agent reads the rendered pages and iterates on the LaTeX
+   until the CV is exactly 2 pages with no orphaned entry titles, and the cover
+   letter is exactly 1 page with the signature visible and fonts consistent.
 7. **ATS-check the CV**: extract the PDF's text layer (`pdftotext`, optional dependency) and verify it the way an ATS parser sees it — contact details present as literal text, no garbled glyphs, sane reading order — then score the posting's keyword coverage against the extraction. Keywords the profile genuinely supports get added; genuine gaps stay visible, never stuffed.
 8. **Present** the final output with a verification checklist
 
@@ -255,7 +290,11 @@ All claims in the CV and cover letter are verified against your actual profile. 
 - **PDF verification loop.** Most LaTeX-resume templates produce "looks fine in the .tex" output that breaks in the PDF: job titles orphan to the next page, cover letters spill onto page 2, bullet fonts silently fall back to the body font. The `/apply` command compiles and visually inspects every PDF and applies targeted fixes (`\needspace`, `\enlargethispage`, font-matching wrappers for list items) until the layout is clean. This runs automatically on every application.
 - **ATS verification on the PDF text layer.** An ATS reads the PDF's embedded text, not the rendered page — and LaTeX can silently produce PDFs whose text extracts as garbage (icon glyphs where the email should be, interleaved lines from multi-column layouts). `/apply` extracts the compiled CV's text layer with `pdftotext` and verifies contact details, reading order, and the posting's keyword coverage against what a parser actually sees. Honesty rule enforced: a keyword the profile doesn't support is acknowledged as a gap, never stuffed in.
 - **Relevance-weighted CV cutting.** When a CV overflows 2 pages, the workflow does not cut mechanically from the "oldest" section. It scores each candidate line by (a) relevance to the target posting, (b) uniqueness in the document, and (c) whether the cover letter depends on it, and cuts the lowest-total-score line first. An older-role bullet that hits posting keywords survives ahead of a recent-role bullet that does not.
-- **Drafter-reviewer separation.** The drafter writes; a second Claude agent, spawned with a fresh context, researches the company and critiques the drafts. The drafter then revises. This catches missed keywords, weak framing, and generic language that a single pass often leaves in.
+- **Drafter-reviewer separation.** The drafter writes; an independent reviewer
+  agent with fresh context researches the company and critiques the drafts. If the
+  runtime cannot spawn a subagent, it performs a clearly separated second pass.
+  The drafter then revises. This catches missed keywords, weak framing, and
+  generic language that a single pass often leaves in.
 - **Token-efficient reviewer dispatch.** The reviewer agent receives drafts inline rather than re-reading them, and the verification checklist runs once at the end of the workflow rather than being duplicated by both agents. Note: the new compile-and-inspect step in Step 5 spends some of those savings on PDF rendering and layout iteration — the workflow trades some end-to-end token cost for a real reduction in broken PDFs reaching the user.
 
 ## Customization
@@ -383,7 +422,9 @@ Thinking about a PR? Read [CONTRIBUTING.md](CONTRIBUTING.md) first - it explains
 ## Acknowledgements
 
 - [Mikkel Krogholm](https://github.com/mikkelkrogsholm) ([skills repo](https://github.com/mikkelkrogsholm/skills)) for the job search CLI skills
-- Built with [Claude Code](https://claude.com/claude-code) by [Anthropic](https://anthropic.com)
+- Original framework by [Mads Lorentzen](https://github.com/MadsLorentzen/ai-job-search),
+  whose canonical workflow is Claude Code-compatible
+- OpenClaw/OpenAI multi-market and local-profile adaptation maintained in this fork
 
 ## License
 
