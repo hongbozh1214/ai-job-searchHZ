@@ -65,11 +65,35 @@ class LocalProfileWorkflowTests(unittest.TestCase):
         self.assertIn("tracked files", skill)
         self.assertIn("never candidate evidence", skill)
 
-    def test_apply_final_verification_uses_local_context(self):
+    def test_apply_final_verification_uses_tracked_checklist_and_local_context(self):
         apply = read(".claude/commands/apply.md")
         final = apply.split("## Step 6: Present Final Output", 1)[1]
         self.assertIn("documents/profile/CLAUDE.md", final)
-        self.assertIn("tracked framework template", final)
+        self.assertIn("tracked root `CLAUDE.md`", final)
+
+    def test_setup_initializes_only_compact_personal_files(self):
+        setup = read(".claude/commands/setup.md")
+        init = setup.split("Initialize the local profile directory", 1)[1].split("```", 2)[1]
+        for name in (
+            "CLAUDE.md", "03-writing-style.md", "04-job-evaluation.md",
+            "05-cv-templates.md", "06-cover-letter-templates.md",
+            "07-interview-prep.md", "search-queries.md",
+        ):
+            with self.subTest(file=name):
+                self.assertIn(f"cp -n profile-templates/{name} documents/profile/{name}", init)
+                self.assertLess(len(read(f"profile-templates/{name}")), 1600)
+        self.assertNotIn("cp -n CLAUDE.md", init)
+        self.assertNotIn("cp -n .claude/skills/job-application-assistant/05-cv-templates.md", init)
+
+    def test_existing_local_profile_is_reviewed_and_backed_up(self):
+        setup = read(".claude/commands/setup.md")
+        migration = setup.split("### Existing local profile compaction", 1)[1].split(
+            "Then, before greeting", 1
+        )[0]
+        self.assertIn("Do not overwrite a populated local file", migration)
+        self.assertIn("legacy-backup/", migration)
+        self.assertIn("After approval", migration)
+        self.assertIn("ambiguous, keep it", migration)
 
     def test_market_docs_do_not_call_tracked_templates_candidate_truth(self):
         files = (

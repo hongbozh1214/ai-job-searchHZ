@@ -1,5 +1,5 @@
 ---
-framework_version: 1.0.0
+framework_version: 1.0.1
 ---
 
 # Agent Guidelines: AI Job Search
@@ -15,7 +15,9 @@ To prevent duplication and configuration drift across different AI agent framewo
      local-only files under [`documents/profile/`](documents/profile/), especially
      `01-candidate-profile.md`, `04-job-evaluation.md`, and the local `CLAUDE.md`.
      The same-named files under `.claude/skills/job-application-assistant/` are
-     tracked templates and methodology; never write personal data there.
+     tracked templates and methodology; never write personal data there. New
+     local files are initialized from short `profile-templates/` outlines;
+     the root `CLAUDE.md` holds rules, not a copy of local candidate context.
    - Market-specific preferences live under `documents/<market>/profile/`; their
      tracked counterparts under `markets/<market>/profile/` are templates only.
 2. **Canonical Workflow Specifications:**

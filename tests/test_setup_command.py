@@ -1,13 +1,10 @@
 """Guards for the /setup command spec.
 
-The command is a markdown spec (the spec IS the implementation). These tests pin
-one invariant that broke silently: Step 3 must personalise every contact block
-that `/apply` later compiles into a document. `cv/main_example.tex` was covered;
-the LaTeX blocks embedded in `05-cv-templates.md` and `06-cover-letter-templates.md`
-were not, so a full Path B/C run left `[YOUR_NAME]`, `[YOUR_EMAIL]` and
-`[YOUR_PHONE]` in both, and whether they reached a compiled cover letter depended
-on the drafter noticing. A real user (#420) ran `/setup` and then hand-edited both
-files to close the gap.
+The command is a markdown spec (the spec IS the implementation). Step 3 must
+personalize the local master CV's contact block and record contact facts in the
+candidate profile. The tracked 05/06 LaTeX skeletons stay neutral; `/apply`
+substitutes candidate details into generated documents. Previously, placeholders
+could reach compiled CVs and letters (#420).
 """
 import os
 import unittest
@@ -52,15 +49,18 @@ class SetupStep3ContactBlocks(unittest.TestCase):
         self.assertEqual(len(matches), 1, f"expected exactly one Step 3 substep for {filename}, got {len(matches)}")
         return matches[0]
 
-    def test_cv_templates_substep_fills_the_contact_block(self):
+    def test_cv_substep_fills_local_master_contact_block(self):
         body = self._substep_for("05-cv-templates.md")
         self.assertIn("contact", body.lower())
+        self.assertIn("documents/profile/cv/main_example.tex", body)
+        self.assertIn("documents/profile/01-candidate-profile.md", body)
         for token in ("[FIRST_NAME]", "[YOUR_EMAIL]", "[YOUR_PHONE]"):
             self.assertIn(token, body, f"the 05 substep must name {token} as something to replace")
 
     def test_cover_letter_templates_get_their_own_substep(self):
         body = self._substep_for("06-cover-letter-templates.md")
         self.assertIn("signature", body.lower())
+        self.assertIn("documents/profile/01-candidate-profile.md", body)
         for token in ("[YOUR_NAME]", "[YOUR_EMAIL]", "[YOUR_PHONE]", "[YOUR_LINKEDIN_URL]"):
             self.assertIn(token, body, f"the 06 substep must name {token} as something to replace")
 

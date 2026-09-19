@@ -238,14 +238,23 @@ All three paths produce the same result: fully populated local profile files und
 
 | File | Content |
 |------|---------|
-| `documents/profile/CLAUDE.md` | Your local workflow context and identity |
+| `documents/profile/CLAUDE.md` | Concise local identity, languages and direction |
 | `documents/profile/01-candidate-profile.md` | Structured education, experience, skills |
 | `documents/profile/02-behavioral-profile.md` | Behavioral assessment |
-| `documents/profile/04-job-evaluation.md` | Personalized skill match areas and career goals |
-| `documents/profile/05-cv-templates.md` | Profile statement templates for your background |
-| `documents/profile/07-interview-prep.md` | STAR examples from your experience |
+| `documents/profile/03-writing-style.md` | Personal writing voice and patterns |
+| `documents/profile/04-job-evaluation.md` | Personal fit preferences |
+| `documents/profile/05-cv-templates.md` | Approved, verified profile statements |
+| `documents/profile/06-cover-letter-templates.md` | Approved personal letter phrasing |
+| `documents/profile/07-interview-prep.md` | Personal STAR examples |
 | `documents/profile/cv/main_example.tex` | Your local LaTeX CV baseline |
 | `documents/profile/search-queries.md` | Job search queries for `/scrape` |
+
+These local files use compact outlines from `profile-templates/`; the tracked
+guides and root `CLAUDE.md` retain scoring, LaTeX, interview and verification
+rules. If you previously completed local setup with full copies of the guides,
+re-run `/setup` to review a one-time conversion. It backs up each original in
+the ignored `documents/profile/legacy-backup/` after you approve the extracted
+personal content. Existing local files are never overwritten during initialization.
 
 ### Re-running setup
 
@@ -313,7 +322,7 @@ These commands apply to the stock templates (moderncv CV, `cover.cls` cover lett
 
 ## 8. Pulling upstream updates into your fork
 
-Upstream keeps improving the methodology files your fork has personalized, so plan for updates from day one:
+Upstream keeps improving the methodology files, so plan for updates from day one:
 
 **Prefer releases over raw `master`.** Tagged [releases](../../releases) are vetted checkpoints, each described in [CHANGELOG.md](CHANGELOG.md). Updating to a tag pulls a stable, documented state instead of whatever `master` happens to be mid-review. Fetch tags with `git fetch upstream --tags` and merge a release (for example `git merge v1.0.0`) when you want stability; pull `master` directly only when you specifically want the latest unreleased changes. The steps below apply either way - substitute the release tag for `upstream/master` where you see it.
 
@@ -342,10 +351,9 @@ Upstream keeps improving the methodology files your fork has personalized, so pl
 
      Forks also inherit a `.github/workflows/upstream-watch.yml` that runs this weekly and writes the result into a single rolling issue (it no-ops on the upstream template itself, and stays disabled on a fork until you enable Actions).
 3. **Merge normally.** `git merge upstream/master` (or `git pull`) updates the
-   tracked framework without touching the local profile. If a methodology template
-   changes, re-run `/setup` or copy the relevant new template section into the local
-   profile after reviewing the diff; candidate facts remain local and are not merge
-   conflicts.
+   tracked framework without touching the local profile. Review methodology
+   changes in the tracked guides; update your local file only when your own
+   preferences change. Candidate facts remain local and are not merge conflicts.
 
 ## Troubleshooting
 

@@ -197,6 +197,7 @@ Postings are treated as untrusted input (the workflow follows no instructions em
 ```
 ai-job-search/
 ├── CLAUDE.md                          # Framework rules (profile data is local)
+├── profile-templates/                 # Short blank outlines for local-only profile files
 ├── .claude/
 │   ├── commands/
 │   │   ├── apply.md                   # /apply workflow (drafter-reviewer)
@@ -305,13 +306,22 @@ If you prefer editing files directly instead of using `/setup`:
 
 | File | What to change |
 |------|---------------|
-| `documents/profile/CLAUDE.md` | Your local workflow context and identity |
+| `documents/profile/CLAUDE.md` | Concise local identity, languages and direction |
 | `documents/profile/01-candidate-profile.md` | Structured version of your CV data |
 | `documents/profile/02-behavioral-profile.md` | Your behavioral assessment or self-assessment |
-| `documents/profile/04-job-evaluation.md` | Skill match areas, career goals, motivation filters |
-| `documents/profile/05-cv-templates.md` | Profile statement templates for different role types |
-| `documents/profile/07-interview-prep.md` | Your STAR examples from actual experience |
+| `documents/profile/03-writing-style.md` | Your own writing voice and approved patterns |
+| `documents/profile/04-job-evaluation.md` | Personal fit preferences and calibration |
+| `documents/profile/05-cv-templates.md` | Approved, verified role statements |
+| `documents/profile/06-cover-letter-templates.md` | Approved personal letter phrasing |
+| `documents/profile/07-interview-prep.md` | Personal STAR examples and answers |
 | `documents/profile/search-queries.md` | Job search queries for your skills and location |
+
+New local files start from short outlines in `profile-templates/`. The tracked
+`.claude/` guides and root `CLAUDE.md` hold scoring, writing, LaTeX and verification
+rules. This avoids copying those guides into every candidate workspace or reading
+the same rules twice per application. If you already ran the earlier local setup,
+re-run `/setup`: it offers a reviewed, backed-up compaction of the old local
+copies without changing your candidate facts.
 
 ### Updating your search queries
 
@@ -339,7 +349,10 @@ Point it at your source file (a `.tex` file plus any `.cls`/`.sty` files or bund
 - `/add-template --use <name>` switches between them
 - `/add-template --use default` reverts to the stock moderncv / cover.cls templates
 
-If you prefer doing it by hand, the manual route still works: update the guidance in `05-cv-templates.md` and `06-cover-letter-templates.md`.
+If you prefer doing it by hand, update the tracked `05-cv-templates.md` and
+`06-cover-letter-templates.md` only for framework-wide template rules. Keep your
+approved statements in `documents/profile/05-cv-templates.md` and your personal
+letter phrasing in `documents/profile/06-cover-letter-templates.md`.
 
 ### Job search tools
 

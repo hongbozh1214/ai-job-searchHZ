@@ -1,6 +1,7 @@
 # Search Queries for Job Scraper
 
-<!-- SETUP: Customize these queries based on your skills, target roles, and location -->
+<!-- This tracked file contains query rules and examples. /setup writes the
+candidate's actual terms to documents/profile/search-queries.md. -->
 
 ## Installed portal CLIs (primary for `/scrape`)
 
@@ -13,8 +14,8 @@ The `site:` query templates in this file are the **WebSearch fallback** — for 
 A posting requiring a language you have *not* declared, as a job condition, is
 excluded before scoring; a posting requiring a *higher level* than you declared in
 a language you *do* work in is flagged for your own judgment, not excluded — see
-`documents/profile/04-job-evaluation.md`'s Language Gate, the single source of
-truth for this rule. Translate each category's keywords rather than
+the Language Gate in tracked `.claude/skills/job-application-assistant/04-job-evaluation.md`.
+Translate each category's keywords rather than
 machine-translating word-for-word (e.g. "Frontend Developer" -> "Desarrollador
 Frontend", not a literal word-for-word translation) if you work in more than one
 language.
@@ -89,7 +90,7 @@ When evaluating results, verify the job location is within reasonable commute di
 
 Your working languages and levels are in `documents/profile/CLAUDE.md`'s
 Languages table. When filtering scraped results, apply
-`documents/profile/04-job-evaluation.md`'s Language Gate: a posting requiring a
+the tracked `.claude/skills/job-application-assistant/04-job-evaluation.md`'s Language Gate: a posting requiring a
 language you haven't declared at all is excluded; a posting requiring a higher
 level than you declared in a language you do work in is not excluded, flag it
 clearly instead (see `job-scraper/SKILL.md`'s Step 3 "Quick Fit Assessment" for how

@@ -91,7 +91,10 @@ You already have `documents/profile/01-candidate-profile.md` and
 `documents/profile/04-job-evaluation.md` in context from Step 1. **Do not re-read
 them.**
 
-Read only the reference files you do not yet have:
+Read only the reference files you do not yet have. The local 03/05/06 files
+contain personal notes, not duplicate guides; read the tracked files once for
+rules. If an old local copy still contains the full guide, use only its personal
+additions and offer the one-time compaction described in `/setup`:
 - `.claude/skills/job-application-assistant/03-writing-style.md`
 - `.claude/skills/job-application-assistant/05-cv-templates.md`
 - `.claude/skills/job-application-assistant/06-cover-letter-templates.md`
@@ -99,10 +102,20 @@ Read only the reference files you do not yet have:
 - `documents/profile/05-cv-templates.md`
 - `documents/profile/06-cover-letter-templates.md`
 
-**Resolve the active template (do this once, reuse everywhere below):** if `05-cv-templates.md` or `06-cover-letter-templates.md` opens with an `ACTIVE-TEMPLATE` managed block (inserted by `/add-template`), read its declared **source extension** and **compile command** — these override the stock `.tex`/lualatex (CV) and `.tex`/xelatex (cover letter) defaults for the rest of this workflow. Call these `<CV_EXT>`/`<CV_COMPILE>` and `<COVER_EXT>`/`<COVER_COMPILE>`; where no block is present, they default to `.tex`, the stock lualatex command, and the stock xelatex command respectively. Every `.tex` reference below is really `<CV_EXT>` or `<COVER_EXT>` — stock behavior is unchanged, this only matters when a custom template is active.
+**Resolve the active template (do this once, reuse everywhere below):** if the
+tracked `05-cv-templates.md` or `06-cover-letter-templates.md` opens with an
+`ACTIVE-TEMPLATE` managed block (inserted by `/add-template`), read its declared
+**source extension** and **compile command** — these override the stock `.tex`/
+lualatex (CV) and `.tex`/xelatex (cover letter) defaults for the rest of this
+workflow. Call these `<CV_EXT>`/`<CV_COMPILE>` and `<COVER_EXT>`/`<COVER_COMPILE>`;
+where no block is present, use the stock defaults. The local personal files do
+not own the active-template block.
 
 Also read the most recent existing CV and cover letter files for concrete structural reference (one of each is enough):
-- Read any existing `cv/main_*<CV_EXT>` file as a structural reference
+- Read `documents/profile/cv/main_example.tex` as the candidate's factual CV
+  baseline for the stock LaTeX template; if a different template is active,
+  take its structure from its tracked skeleton and candidate facts from the
+  profile/local CV. Read any `cv/main_*<CV_EXT>` only as optional phrasing.
 - Read any existing `cover_letters/cover_*<COVER_EXT>` or `cover_letters/Cover_*<COVER_EXT>` file as a structural reference
 
 *The local candidate profile (`documents/profile/01-candidate-profile.md`), the
@@ -124,6 +137,9 @@ claims.*
   one, default to **English**. Never switch language per posting - the CV language
   is a profile-level choice, so all CVs stay consistent and reusable
 - Follow the moderncv/banking format from `05-cv-templates.md`
+- Populate contact details and PDF metadata from the local master CV and
+  `documents/profile/01-candidate-profile.md`; the tracked 05 skeleton still
+  contains placeholders and is never a source of candidate contact data
 - Tailor the profile statement and experience bullets to the specific role
 - Reframe skills and achievements to match job requirements
 - Keep to 2 pages
@@ -137,6 +153,10 @@ claims.*
 ### Cover Letter (`cover_letters/cover_<company>_<role><COVER_EXT>`)
 - **Match the language of the job posting** (Danish posting -> Danish cover letter, English posting -> English cover letter)
 - Follow the structure from `06-cover-letter-templates.md`
+- Fill `\namesection{}` and `\signature{}` from
+  `documents/profile/01-candidate-profile.md`; check name, email, phone and
+  LinkedIn before compile, and never copy placeholder contact text from the
+  tracked 06 skeleton
 - Use the `cover.cls` template
 - Tailor the opening paragraph to the specific role and company
 - Address to a named person if available in the posting, otherwise "Dear Hiring Manager" (or equivalent in posting language)
@@ -375,15 +395,16 @@ After the final clean compile, delete intermediate build files the compile comma
 
 ## Step 6: Present Final Output
 
-Run the full verification checklist from `documents/profile/CLAUDE.md` now — this
+Run the full verification checklist from the tracked root `CLAUDE.md` now — this
 is the **only** verification pass in the workflow. Re-read both generated files
 once here to verify final state on disk matches your mental model after the Step 4
-and Step 5 edits. The root `CLAUDE.md` is a tracked framework template, not
-candidate evidence.
+and Step 5 edits. `documents/profile/CLAUDE.md` holds personal identity and
+preferences; apply any additional candidate-approved presentation constraints
+recorded there as well. Neither is a substitute for the other.
 
 ### Verification Checklist
-Report pass/fail for each item in the local
-`documents/profile/CLAUDE.md` verification checklist (factual accuracy,
+Report pass/fail for each item in the tracked root
+`CLAUDE.md` verification checklist (factual accuracy,
 targeting, consistency, quality).
 
 ### Key Tailoring Decisions

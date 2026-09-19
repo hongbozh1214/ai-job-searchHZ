@@ -42,8 +42,12 @@ For `profile`, inspect and list these files (or mark each as missing/empty):
 - `documents/profile/07-interview-prep.md`
 - `documents/profile/search-queries.md`
 - `documents/profile/cv/main_example.tex`
+- `documents/profile/legacy-backup/` (if a prior local profile was compacted,
+  this contains the original personal files and will also be deleted)
 
-Explain that these are the only candidate-profile files cleared.
+Explain that all personal files under `documents/profile/`, including any
+additional notes and legacy backups, are cleared. List any additional files found
+there before asking for confirmation.
 
 The following files are NOT touched (they contain framework rules and templates):
 
@@ -83,7 +87,8 @@ directory marker:
 This clears `CLAUDE.md`, `01-candidate-profile.md`, `02-behavioral-profile.md`,
 `03-writing-style.md`, `04-job-evaluation.md`, `05-cv-templates.md`,
 `06-cover-letter-templates.md`, `07-interview-prep.md`, `search-queries.md`, and
-`cv/main_example.tex` within `documents/profile/`.
+`cv/main_example.tex` within `documents/profile/`, as well as any
+`legacy-backup/` created during compaction.
 
 ```bash
 find documents/profile -type f ! -name .gitkeep -delete

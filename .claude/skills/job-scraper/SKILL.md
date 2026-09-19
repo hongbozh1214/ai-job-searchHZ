@@ -41,8 +41,9 @@ Optional arguments:
 1. Read `job_scraper/seen_jobs.json` (create if missing - start with `{"seen": {}}`)
 2. Read `job_search_tracker.csv` to extract already-applied companies+roles
 3. Read `documents/profile/search-queries.md` for the local search strategy. Use
-   `.claude/skills/job-scraper/search-queries.md` only as the tracked template when
-   initializing a missing local copy.
+   `.claude/skills/job-scraper/search-queries.md` for query rules and examples.
+   If the local strategy is missing, ask the user to run setup; initialize it
+   from `profile-templates/search-queries.md`, never by copying the full guide.
 
 ### Step 1: Search
 
@@ -145,7 +146,7 @@ For each new job, do a rapid fit check (NOT the full evaluation from `04-job-eva
 - **Low match**: Role requires significant skills you lack
 
 **Language override:** before assigning a match level, check the posting against
-`documents/profile/04-job-evaluation.md`'s Language Gate (a required language you
+the tracked `04-job-evaluation.md`'s Language Gate (a required language you
 haven't declared at all in `documents/profile/CLAUDE.md`'s Languages table). A
 required language that's entirely undeclared overrides skill fit: mark it **Low**
 regardless of how well the skills align, and name it in the highlight bullets so it

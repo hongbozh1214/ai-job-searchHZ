@@ -5,7 +5,7 @@ description: >
   and preparing for interviews. Triggers on keywords like: job posting, job application, CV,
   cover letter, resume, interview prep, job fit, career, application, apply, ansøgning, stilling
 allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash, Edit, Write, AskUserQuestion
-framework_version: 1.3.4
+framework_version: 1.3.5
 ---
 
 # Job Application Assistant
@@ -39,16 +39,19 @@ skill directory are methodology and blank templates, never candidate evidence.
 - Before writing either document, derive `<company>_<role>` once by the **Subfolder naming** rule in `documents/README.md`; reuse that exact value for the CV, cover letter, and Step 3b archive path. If the rule says to stop because the derived name is empty, stop before creating any file.
 - Use `documents/profile/cv/main_example.tex` as the factual master CV and read
   only a role-specific file under `cv/` for structure when one already exists
-- Follow the methodology in `05-cv-templates.md` and the candidate-specific
-  statements/contact data in `documents/profile/05-cv-templates.md`
+- Follow the methodology and active template in tracked `05-cv-templates.md`,
+  candidate-specific statements in `documents/profile/05-cv-templates.md`,
+  and contact data from `documents/profile/01-candidate-profile.md` and the
+  local master CV; never copy tracked placeholders into a generated CV
 - Create `cv/main_<company>_<role>.tex` with tailored content
 - Adjust: profile statement, skills section, experience bullet emphasis, section order
 
 ### Step 3: Write Cover Letter
 - Follow the rules in `03-writing-style.md` plus the candidate-specific patterns
   in `documents/profile/03-writing-style.md` (critical: no em-dashes, no cliches)
-- Follow the structure in `06-cover-letter-templates.md` plus the local contact,
-  signature, and approved patterns in `documents/profile/06-cover-letter-templates.md`
+- Follow the structure and active template in tracked `06-cover-letter-templates.md`,
+  approved personal patterns in `documents/profile/06-cover-letter-templates.md`,
+  and contact/signature facts in `documents/profile/01-candidate-profile.md`
 - Create `cover_letters/cover_<company>_<role>.tex`
 - Ensure the letter connects specific experience to the role requirements
 
@@ -70,7 +73,10 @@ skill directory are methodology and blank templates, never candidate evidence.
 
 The tracked files in this directory define methodology and placeholders. Candidate
 facts are read from the gitignored local copies under `documents/profile/`; setup
-must initialize them before any application workflow runs.
+must initialize them before any application workflow runs. New local files use
+the short `profile-templates/` outlines, except 01/02, which use tracked blank
+profile outlines. For older full local copies, read only personal additions and
+offer the reviewed compaction described in `/setup`.
 
 | File | Purpose |
 |------|---------|
@@ -78,9 +84,9 @@ must initialize them before any application workflow runs.
 | `documents/profile/02-behavioral-profile.md` | Behavioral assessment, strengths, ideal environments |
 | `documents/profile/03-writing-style.md` | Candidate tone and style; tracked counterpart supplies rules |
 | `documents/profile/04-job-evaluation.md` | Candidate preferences; tracked counterpart supplies scoring rules |
-| `documents/profile/05-cv-templates.md` | Local contact/profile data; tracked counterpart supplies tailoring rules |
-| `documents/profile/06-cover-letter-templates.md` | Local contact/signature data; tracked counterpart supplies structure |
-| `documents/profile/07-interview-prep.md` | STAR examples, tough questions, roleplay guidelines |
+| `documents/profile/05-cv-templates.md` | Approved personal statements; tracked counterpart supplies tailoring rules |
+| `documents/profile/06-cover-letter-templates.md` | Approved personal phrasing; tracked counterpart supplies structure |
+| `documents/profile/07-interview-prep.md` | Personal STAR examples and approved answers; tracked counterpart supplies interview rules |
 | `08-application-forms.md` | Portal free-text fields: self-introduction, project entries, character-limited pitches |
 | `09-web-research.md` | Fetching postings and company pages: trust boundary, the WebFetch 403 fallback, escalation order, claim verification |
 

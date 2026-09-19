@@ -5,7 +5,7 @@ command reads the source materials here and writes the resulting candidate profi
 only under `documents/profile/` (plus the selected market's
 `documents/<market>/profile/` preferences). The tracked files under `.claude/`,
 `markets/`, and `cv/` are framework templates and rules; they are never populated
-with personal data.
+with personal data. Short local outlines live under `profile-templates/`.
 
 `documents/profile/` is intentionally gitignored. It is the one shared candidate
 profile for this checkout, so every market workflow and every OpenClaw agent using
@@ -19,7 +19,7 @@ workspace if agents represent different people.
 ```
 documents/
 ├── profile/                    # Local candidate profile (gitignored)
-│   ├── CLAUDE.md               # Local identity, facts, and workflow context
+│   ├── CLAUDE.md               # Short local identity and career direction
 │   ├── 01-candidate-profile.md # Canonical structured candidate facts
 │   ├── 02-behavioral-profile.md
 │   ├── 03-writing-style.md
@@ -247,6 +247,10 @@ On a pre-local-profile checkout, run `/setup` once and choose the migration path
 It copies any populated tracked profile files into `documents/profile/` before
 clearing the tracked files back to templates. Do not commit or push the old
 personalized tracked files while migrating a public fork.
+
+If you already used the earlier local setup, `/setup` can review and compact
+the local copies of framework guides. It preserves your personal additions and
+backs up the originals under `documents/profile/legacy-backup/` after approval.
 
 **When to re-run:**
 - After adding a new LinkedIn export

@@ -53,6 +53,36 @@ The migration is complete only when `git grep` finds no real name, contact detai
 employment history, salary preference, or personalized search query outside
 `documents/profile/` and `documents/<market>/profile/`.
 
+### Existing local profile compaction
+
+An earlier local-profile mode copied whole tracked methodology files into
+`documents/profile/`. If any existing local `CLAUDE.md`, `03-writing-style.md`,
+`04-job-evaluation.md`, `05-cv-templates.md`, `06-cover-letter-templates.md`,
+`07-interview-prep.md`, or `search-queries.md` contains framework rules, guide
+sections, a LaTeX skeleton, or an `ACTIVE-TEMPLATE` block, offer to compact it
+once before continuing. This is independent of the tracked-profile migration.
+Do not overwrite a populated local file with a new blank template.
+
+1. Read the existing local files, the corresponding tracked methodology and the
+   short shapes under `profile-templates/`. Extract **all personal additions and
+   edits**, including prose outside the expected headings. Compare against the
+   tracked files to distinguish boilerplate from personalized changes; if a line
+   is ambiguous, keep it and ask the user rather than discard it. Keep any
+   candidate-specific template override or formatting choice as a local note;
+   never remove the tracked `ACTIVE-TEMPLATE` block installed by `/add-template`.
+2. Present the proposed compact files and a list of material removed as duplicated
+   framework text. Get the user's approval for the proposed content. If no
+   agreement is reached, preserve the existing profile and continue with it.
+3. After approval, make a private backup of each original under
+   `documents/profile/legacy-backup/`, then replace only the agreed local files.
+   Confirm that all names, contact details, preferences, STAR stories, personal
+   patterns and candidate-approved text still appear in the compact profile.
+   The backup is gitignored; do not read it in normal workflows.
+
+This one-time review is the only point where both versions should be read in full.
+Subsequent `/apply`, `/rank`, `/scrape` and `/interview` runs read the short local
+files and the tracked rules once each.
+
 Then, before greeting the user, scan the `documents/` folder. Use Glob with `documents/**/*` and count files per subfolder (`cv/`, `linkedin/`, `diplomas/`, `references/`, `projects/`, `applications/`).
 
 Then welcome the user with a single message that lists three paths. The wording changes based on what was found.
@@ -121,22 +151,23 @@ If every subfolder is empty, stop and tell the user to populate the folder. Poin
 ### Step A2: Read Existing Local Profile Files
 
 Read these local files in parallel before extracting anything. You must know what is
-already there to make the merge intelligent. If a local file is missing, copy the
-corresponding tracked template first; never edit the tracked source in place.
+already there to make the merge intelligent. If a local file is missing, copy its
+short personal template from `profile-templates/` (or the tracked 01/02 profile
+outline) first; never copy a methodology guide or edit the tracked source in place.
 
 Initialize the local profile directory (the `-n` flag preserves existing data):
 
 ```bash
 mkdir -p documents/profile/cv
-cp -n CLAUDE.md documents/profile/CLAUDE.md
+cp -n profile-templates/CLAUDE.md documents/profile/CLAUDE.md
 cp -n .claude/skills/job-application-assistant/01-candidate-profile.md documents/profile/01-candidate-profile.md
 cp -n .claude/skills/job-application-assistant/02-behavioral-profile.md documents/profile/02-behavioral-profile.md
-cp -n .claude/skills/job-application-assistant/03-writing-style.md documents/profile/03-writing-style.md
-cp -n .claude/skills/job-application-assistant/04-job-evaluation.md documents/profile/04-job-evaluation.md
-cp -n .claude/skills/job-application-assistant/05-cv-templates.md documents/profile/05-cv-templates.md
-cp -n .claude/skills/job-application-assistant/06-cover-letter-templates.md documents/profile/06-cover-letter-templates.md
-cp -n .claude/skills/job-application-assistant/07-interview-prep.md documents/profile/07-interview-prep.md
-cp -n .claude/skills/job-scraper/search-queries.md documents/profile/search-queries.md
+cp -n profile-templates/03-writing-style.md documents/profile/03-writing-style.md
+cp -n profile-templates/04-job-evaluation.md documents/profile/04-job-evaluation.md
+cp -n profile-templates/05-cv-templates.md documents/profile/05-cv-templates.md
+cp -n profile-templates/06-cover-letter-templates.md documents/profile/06-cover-letter-templates.md
+cp -n profile-templates/07-interview-prep.md documents/profile/07-interview-prep.md
+cp -n profile-templates/search-queries.md documents/profile/search-queries.md
 cp -n cv/main_example.tex documents/profile/cv/main_example.tex
 ```
 
@@ -210,8 +241,8 @@ For each skill file, compare extracted document content against the current file
 
 - **`documents/profile/01-candidate-profile.md` (`## Independent Projects`):** Source is `projects/` documents. Extract structured project entries formatted as `- **[PROJECT_NAME]**: [DESCRIPTION with tech stack and measurable outcome]`. Ground all claims in the document text.
 - **`documents/profile/02-behavioral-profile.md`:** Source is LinkedIn About + recommendation letters. Extract recurring themes, adjectives, phrases about how the candidate works. Add only to "Strongest Behavioral Traits", "How [Candidate] Works Best", or "Management Style Preferences" sections. Do not overwrite existing scored assessments. Always label inferred additions: *[Inferred from LinkedIn About / Reference letter - review before relying on this]*
-- **`03-writing-style.md`:** Source is `cover_letter.tex` files. Extract recurring patterns. Add as observations under "## Patterns Observed in Past Applications". Do not modify existing rules. Only add if 2+ cover letters show a genuine pattern.
-- **`documents/profile/04-job-evaluation.md`:** Source is `job_posting.md` + `outcome.md` pairs. If an application reached interview or offer: note role type and sector as a confirmed strong-fit signal. If 2+ applications repeat a no-response or rejection pattern: note it. Add findings under "## Calibration from Past Applications". Do not modify the existing scoring framework.
+- **`documents/profile/03-writing-style.md`:** Source is `cover_letter.tex` files. Extract recurring patterns. Add as observations under "## Patterns Observed in Past Applications". Do not modify tracked rules. Only add if 2+ cover letters show a genuine pattern.
+- **`documents/profile/04-job-evaluation.md`:** Source is `job_posting.md` + `outcome.md` pairs. If an application reached interview or offer: note role type and sector as a confirmed strong-fit signal. If 2+ applications repeat a no-response or rejection pattern: note it. Add findings under "## Calibration from Past Applications". Do not modify the tracked scoring framework.
 - **`documents/profile/05-cv-templates.md`:** Source is `cv_draft.tex` files. Extract any profile statement that does not already appear in templates. Label with: *[Used for: <company>_<role>]*. **Ground before extracting:** archived drafts are tailored outputs, not source documents - verify every factual claim in an extracted statement (titles, employers, metrics, technologies) against `documents/profile/01-candidate-profile.md` and drop or correct any claim the profile does not support, keeping only the framing. A tailored draft that drifted must never become a template future applications start from.
 - **`documents/profile/06-cover-letter-templates.md`:** Source is `cover_letter.tex` files. Extract opening patterns, bullet structures, closing formulations. Add only what is structurally distinct from existing templates.
 - **`documents/profile/07-interview-prep.md`:** Source is CV bullets, LinkedIn descriptions, reference letter quotes. Identify achievements not yet covered by an existing STAR example. Do NOT draft full STAR examples. Add stubs under "## STAR Candidates (Complete Manually)":
@@ -401,52 +432,82 @@ Once data collection is complete, generate or finish populating the following
 files under `documents/profile/`. **For Path A**, the seven local profile files
 are already populated by Step A7; check each before writing and skip if its
 content is no longer placeholder text. The tracked counterparts are never write
-targets.
+targets. For Path B/C, first run the initialization block in Step A2 for any
+missing files (`cp -n` preserves existing data); then fill the personal fields
+below. A `--section` update only touches the selected local fields and must not
+reinitialize or replace other populated files.
 
 ### 1. Update `documents/profile/CLAUDE.md`
-Replace all `[PLACEHOLDER]` tokens with the user's actual information. Keep the
-root tracked `CLAUDE.md` as a framework-only instruction file; copy it to the
-local path first when needed.
+Fill the candidate's Identity (including the Languages table and CV language)
+and Career Direction from `profile-templates/CLAUDE.md`. Keep this file concise;
+the root tracked `CLAUDE.md` holds workflow instructions and the verification
+checklist, and must not be copied into the local profile.
 
 ### 2. Populate `documents/profile/01-candidate-profile.md` *(Path B and C; skip if Path A populated it)*
-Write the full candidate profile with structured sections: Identity (including Languages, with levels), Education, Professional Experience, Independent Projects, Technical Skills, Publications, Awards, References.
+Write the full candidate profile with structured sections: Identity (including
+contact details and Languages, with levels), Education, Professional Experience,
+Independent Projects, Technical Skills, Publications, Awards, References.
 
 ### 3. Populate `documents/profile/02-behavioral-profile.md` *(Path B and C; skip if Path A populated it)*
 Write the behavioral profile based on assessment results or synthesized answers.
 
 ### 4. Update `documents/profile/04-job-evaluation.md` *(Path B and C; skip if Path A populated it)*
-Replace skill match areas with the user's actual skills:
+Fill only the personal fit preferences; the gates, scoring rubric and company
+research checklist are in the tracked `04-job-evaluation.md`:
 - Strong match areas: [their primary skills]
 - Moderate match areas: [their secondary skills]
 - Weak match areas: [skills they lack]
 
 Update career goals and motivation filters with their actual preferences.
 
+Fill `documents/profile/03-writing-style.md` with the candidate's own stated
+voice or a pattern verified from documents. When neither is available, remove
+the example bullet and leave the section empty; do not treat the blank outline
+as a writing preference.
+
 ### 5. Update `documents/profile/05-cv-templates.md` *(Path B and C; skip if Path A populated it)*
-Add role-specific profile statement templates based on their background, and personalise the contact block inside the file's LaTeX template: replace `[FIRST_NAME]`, `[LAST_NAME]`, `[YOUR_ADDRESS]`, `[YOUR_PHONE]`, `[YOUR_EMAIL]`, `[YOUR_LINKEDIN_URL]` and `[YOUR_GITHUB_URL]` (and `[YOUR_NAME]` in the PDF title) with their actual details. Check this block whichever path ran - Path A extracts profile statements from documents, not the contact block. `/apply` builds every tailored CV from this template, so a placeholder left here reaches a compiled document.
+Add only role-specific, fact-checked profile statements and personal wording to
+this short file. For **every path**, personalize the contact block in
+`documents/profile/cv/main_example.tex` (the actual local master CV): replace
+`[FIRST_NAME]`, `[LAST_NAME]`, `[YOUR_ADDRESS]`, `[YOUR_PHONE]`, `[YOUR_EMAIL]`,
+`[YOUR_LINKEDIN_URL]`, `[YOUR_GITHUB_URL]` and `[YOUR_NAME]` (including the PDF
+title) with real details or remove unused optional fields. Keep the same facts in
+`documents/profile/01-candidate-profile.md`. The tracked 05 LaTeX skeleton stays
+placeholder-only and supplies layout rules; `/apply` starts from the local master.
 
 ### 6. Update `documents/profile/06-cover-letter-templates.md` *(all paths - Path A does not fill this block)*
-Personalise the contact line and the signature inside the file's LaTeX template: replace `[YOUR_NAME]`, `[YOUR_EMAIL]`, `[YOUR_PHONE]` and `[YOUR_LINKEDIN_URL]` in the `\namesection{}` line, and `[YOUR_NAME]` in `\signature{}`. Path A merges only structural patterns (openings, bullets, closings) into this file, never the contact block. `/apply` compiles every cover letter from this template.
+Record only approved personal phrasing and patterns. **For every path**, confirm
+`[YOUR_NAME]`, `[YOUR_EMAIL]`, `[YOUR_PHONE]` and `[YOUR_LINKEDIN_URL]` are filled
+in `documents/profile/01-candidate-profile.md`. `/apply` substitutes these into
+the tracked cover letter skeleton's `\namesection{}` line and `\signature{}`;
+it must never compile the skeleton with placeholder contact details. No copy of
+the LaTeX guide is needed in the local profile.
 
 ### 7. Update `documents/profile/07-interview-prep.md` *(Path B and C; skip if Path A populated it)*
 Create STAR examples from their actual experience (at least 3-4 examples). Path A leaves STAR stubs under "## STAR Candidates (Complete Manually)" rather than full examples; if any stubs are present, mention them in Step 4 so the user knows to flesh them out.
 
 ### 8. Update `documents/profile/cv/main_example.tex`
 Replace placeholder personal data with their actual name, contact info, and add
-their education and most recent experience entries. Generated CVs remain under
-the ignored root `cv/` output paths.
+their education and most recent experience entries. Verify the contact block
+described in step 5; generated CVs remain under the ignored root `cv/` output paths.
 
 ### 9. Generate `documents/profile/search-queries.md`
-Replace all placeholder tokens in the search queries file with the user's actual information from Section 9 (or the equivalent follow-up questions in Path A's Step A7):
-- Replace `[YOUR_PRIMARY_ROLE_TYPE]`, `[YOUR_PRIMARY_JOB_TITLE]`, etc. with actual role titles
-- Replace `[YOUR_KEY_SKILL]`, `[YOUR_DOMAIN_KEYWORD_1]`, etc. with actual skills and domain terms
-- Replace `[YOUR_CITY]`, `[YOUR_COUNTRY]`, `[YOUR_REGION]` with actual location
+Fill the short search strategy from Section 9 (or the equivalent follow-up
+questions in Path A's Step A7):
+- Replace `[PRIMARY_FUNCTION]`, `[TITLES_IN_WORKING_LANGUAGES]`, etc. with actual roles
+- Replace `[SKILLS_AND_DOMAINS]` and `[TERMS]` with searchable skills and domains
+- Replace `[LOCATIONS]` and `[DOMAINS]` with actual locations and portals
 - Fill in the location filter tiers (ideal, acceptable, borderline, too far) based on commute constraints
 - Organize queries into priority categories matching the user's career direction:
   - Priority 1: Their strongest/most desired role direction
   - Priority 2: Their domain expertise
   - Priority 3: Adjacent roles they could pivot into
   - Priority 4: Broader roles (wider net)
+
+Before reporting completion, review all generated local files for unfilled
+placeholder rows (including STAR examples, contact details and search queries).
+Remove unused optional examples, or ask for a missing required fact; never treat
+a placeholder as evidence or pass it into a compiled document.
 
 ---
 
@@ -456,12 +517,12 @@ Present a summary:
 
 > **Setup complete!** Here's what was generated:
 >
-> - `documents/profile/CLAUDE.md` - Your local workflow context and identity
+> - `documents/profile/CLAUDE.md` - Your concise local identity and direction
 > - `documents/profile/01-candidate-profile.md` - Structured profile
 > - `documents/profile/02-behavioral-profile.md` - Behavioral assessment
-> - `documents/profile/04-job-evaluation.md` - Personalized evaluation framework
-> - `documents/profile/05-cv-templates.md` - CV templates with your profile statements and contact block
-> - `documents/profile/06-cover-letter-templates.md` - Cover letter templates with your contact line and signature
+> - `documents/profile/04-job-evaluation.md` - Personal fit preferences
+> - `documents/profile/05-cv-templates.md` - Verified personal CV statements
+> - `documents/profile/06-cover-letter-templates.md` - Approved personal letter phrasing
 > - `documents/profile/07-interview-prep.md` - STAR examples from your experience
 > - `documents/profile/cv/main_example.tex` - Your local LaTeX CV baseline
 > - `documents/profile/search-queries.md` - Job search queries for `/scrape`

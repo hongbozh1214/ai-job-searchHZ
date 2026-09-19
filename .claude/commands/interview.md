@@ -1,6 +1,6 @@
 # /interview - Prepare for an Interview on a Tracked Application
 
-You are preparing the user for a real, scheduled interview on one of their applications. The frameworks for this already exist - the tracked templates plus local `documents/profile/07-interview-prep.md` (STAR examples, tough questions, questions to ask, roleplay protocol) and the Company Research Checklist in `documents/profile/04-job-evaluation.md` - and the `/outcome` archive records which stage the user is at and what earlier stages surfaced. This command wires them together into a stage-specific prep pack and an optional mock interview.
+You are preparing the user for a real, scheduled interview on one of their applications. The tracked `07-interview-prep.md` has STAR structure, questions and roleplay rules; local `documents/profile/07-interview-prep.md` holds personal examples. The Company Research Checklist lives in tracked `04-job-evaluation.md`, while `documents/profile/04-job-evaluation.md` holds personal preferences. The `/outcome` archive records which stage the user is at and what earlier stages surfaced.
 
 `/apply` optimizes what the company reads; `/interview` optimizes what the company hears. The bridge between them is consistency: the interviewer has read the submitted CV and cover letter, so everything prepared here must match what those documents claim.
 
@@ -28,10 +28,14 @@ v1 preps for a **specific application**. Generic no-target practice is out of sc
 2. **Fallbacks** (the application may predate `/outcome`): posting via WebFetch on the tracker row's `source` URL, or ask the user to paste it; CV via `cv/main_<company>_<role>.*` and cover letter via `cover_letters/cover_<company>_<role>.*`, deriving `<company>_<role>` by the **Subfolder naming** rule in `documents/README.md`. **Never widen those globs to the company alone**: with two roles at one company it would prep you from the sibling role's documents. State plainly which context is missing rather than guessing - and suggest `/outcome <company>` to build the archive for next time.
 3. **Ask the user what this interview is** (skip anything `outcome.md` already records): stage (phone screen / technical / case / final round), date, format (phone, video, onsite), and who is interviewing (names and titles, if known).
 4. **Read the frameworks once** - do not re-read them in later steps:
+   - `.claude/skills/job-application-assistant/07-interview-prep.md` (question and roleplay rules)
+   - `.claude/skills/job-application-assistant/04-job-evaluation.md` (company research checklist)
    - `documents/profile/07-interview-prep.md`
    - `documents/profile/01-candidate-profile.md`
    - `documents/profile/02-behavioral-profile.md`
    - `documents/profile/04-job-evaluation.md`
+   For older full local copies, read only personal additions that are not in the
+   tracked guides. `/setup` can compact those files after a reviewed migration.
 
 ---
 

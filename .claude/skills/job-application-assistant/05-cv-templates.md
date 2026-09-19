@@ -1,10 +1,12 @@
 ---
-framework_version: 1.4.4
+framework_version: 1.4.5
 ---
 
 # CV Templates and Tailoring Guide
 
-<!-- SETUP: Profile statements and section ordering are personalized by running /setup -->
+<!-- /setup writes approved personal statements to documents/profile/05-cv-templates.md;
+the local master CV and 01-candidate-profile.md supply contact and work history.
+Keep the tracked LaTeX example and ACTIVE-TEMPLATE block candidate-neutral. -->
 
 ## Template: LaTeX moderncv (Banking Style)
 
@@ -134,14 +136,9 @@ Write 5-7 lines that function as an "elevator pitch": a concise, compelling intr
 
 When the role sits outside your home domain, **lead with the domain-transfer argument** - the one or two sentences connecting your background to their problem (e.g. wave physics to radar signal processing) belong in the profile statement's opening, not buried in the cover letter. It is the strongest card a domain-changer holds; play it first.
 
-**Create 2-3 profile statement templates for your main role types:**
-
-<!-- SETUP: These are populated based on your background -->
-**For [YOUR_PRIMARY_ROLE_TYPE] roles:**
-> [YOUR_PROFILE_STATEMENT_TEMPLATE_1]
-
-**For [YOUR_SECONDARY_ROLE_TYPE] roles:**
-> [YOUR_PROFILE_STATEMENT_TEMPLATE_2]
+For reusable, candidate-approved role statements, read the short local
+`documents/profile/05-cv-templates.md`. `/setup` adds 2-3 statements there;
+the tracked guide must stay neutral. Ground every claim in the candidate profile.
 
 Statements labeled *[Used for: <company>_<role>]* were extracted from archived application drafts by `/setup` Path A. They are **phrasing references, never fact sources**: when drafting from one, every factual claim still comes from `documents/profile/01-candidate-profile.md` - a past tailored draft does not vouch for its own accuracy.
 
