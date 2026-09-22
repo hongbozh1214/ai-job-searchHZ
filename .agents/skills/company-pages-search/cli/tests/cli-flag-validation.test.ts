@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { runCLI, parseJSON } from "./helpers";
+import { runCLI, runExampleCLI, parseJSON } from "./helpers";
 
 // Every case fails argument validation, or resolves against the registry,
 // before any network request — the suite is network-free.
@@ -24,13 +24,13 @@ interface ListEntry {
 
 describe("the --key=value form is understood, not swallowed", () => {
   test("--company=<unknown> errors instead of querying every employer", async () => {
-    const r = await runCLI(["search", "--company=No Such Company AG"]);
+    const r = await runExampleCLI(["search", "--company=No Such Company AG"]);
     expect(r.exitCode).toBe(1);
     expect(errorOf(r.stderr).code).toBe("COMPANY_NOT_FOUND");
   });
 
   test("-c=<unknown> resolves the alias too", async () => {
-    const r = await runCLI(["search", "-c=No Such Company AG"]);
+    const r = await runExampleCLI(["search", "-c=No Such Company AG"]);
     expect(r.exitCode).toBe(1);
     expect(errorOf(r.stderr).code).toBe("COMPANY_NOT_FOUND");
   });
@@ -42,13 +42,13 @@ describe("the --key=value form is understood, not swallowed", () => {
   });
 
   test("--format=table is honoured", async () => {
-    const r = await runCLI(["list", "--format=table"]);
+    const r = await runExampleCLI(["list", "--format=table"]);
     expect(r.exitCode).toBe(0);
     expect(r.stdout.startsWith("{")).toBe(false);
   });
 
   test("a value containing '=' survives intact", async () => {
-    const r = await runCLI(["search", "--company=A=B Ltd"]);
+    const r = await runExampleCLI(["search", "--company=A=B Ltd"]);
     expect(errorOf(r.stderr).code).toBe("COMPANY_NOT_FOUND");
     expect(errorOf(r.stderr).error).toContain("A=B Ltd");
   });
@@ -108,12 +108,12 @@ describe("--limit validation", () => {
   });
 
   test("--limit=0 is accepted and caps the output at nothing", async () => {
-    const r = await runCLI(["list"]);
+    const r = await runExampleCLI(["list"]);
     const out = parseJSON<{ results?: ListEntry[] } | ListEntry[]>(r);
     const entries = Array.isArray(out) ? out : (out.results ?? []);
     const unknown = entries.every((e) => e.name !== "No Such Company AG");
     expect(unknown).toBe(true); // sanity: the guard name is not a real entry
-    const s = await runCLI(["search", "--company=No Such Company AG", "--limit=0"]);
+    const s = await runExampleCLI(["search", "--company=No Such Company AG", "--limit=0"]);
     // Still resolves the company first, so a zero limit is not a way to skip
     // validation.
     expect(errorOf(s.stderr).code).toBe("COMPANY_NOT_FOUND");
@@ -122,7 +122,7 @@ describe("--limit validation", () => {
 
 describe("flag forms that must keep working", () => {
   test("space-separated values still parse", async () => {
-    const r = await runCLI(["search", "--company", "No Such Company AG"]);
+    const r = await runExampleCLI(["search", "--company", "No Such Company AG"]);
     expect(errorOf(r.stderr).code).toBe("COMPANY_NOT_FOUND");
   });
 
@@ -133,7 +133,7 @@ describe("flag forms that must keep working", () => {
   });
 
   test("positional arguments are not consumed as flag values", async () => {
-    const r = await runCLI(["--format", "json", "list"]);
+    const r = await runExampleCLI(["--format", "json", "list"]);
     expect(r.exitCode).toBe(0);
     expect(() => JSON.parse(r.stdout)).not.toThrow();
   });

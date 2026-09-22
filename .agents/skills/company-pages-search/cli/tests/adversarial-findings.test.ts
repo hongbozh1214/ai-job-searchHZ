@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { scrapeGenericLinks, curlFallback, type RobotsGate } from "../src/helpers";
-import { runCLI } from "./helpers";
+import { runExampleCLI } from "./helpers";
 
 // Regression pins for defects found by an adversarial review (grok), not by
 // inspection. Each one was reproduced before it was fixed.
@@ -73,7 +73,7 @@ describe("generic scraper: href forms that used to scrape to zero links", () => 
 
 describe("a misconfigured registry entry fails loudly, not as 'no openings'", () => {
   test("an unknown ats type is reported instead of silently scraped", async () => {
-    const r = await runCLI(["search", "--company=No Such Company AG"]);
+    const r = await runExampleCLI(["search", "--company=No Such Company AG"]);
     // Guard entry does not exist, so we get COMPANY_NOT_FOUND rather than a
     // silent empty result — the same principle, reachable without a network.
     expect(r.exitCode).toBe(1);

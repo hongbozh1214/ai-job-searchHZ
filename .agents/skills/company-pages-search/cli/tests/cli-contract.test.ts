@@ -1,16 +1,13 @@
 import { describe, test, expect } from "bun:test";
 import { join } from "path";
-import { runCLI, parseJSON } from "./helpers";
+import { runCLI, runExampleCLI, parseJSON } from "./helpers";
 
 // Every case here is offline: `list` reads the registry only, and the `search`
 // and `detail` cases all fail argument or registry validation before any fetch.
 //
 // Tests opt into the committed example explicitly. Production must never use it
 // implicitly when the personal registry is missing.
-const EXAMPLE_REGISTRY = join(import.meta.dir, "../../company_pages.example.json");
 const MISSING_REGISTRY = join(import.meta.dir, "definitely-not-a-registry.json");
-const runExampleCLI = (args: string[]) =>
-  runCLI(args, { COMPANY_PAGES_REGISTRY: EXAMPLE_REGISTRY });
 
 interface ListEntry {
   name: string;

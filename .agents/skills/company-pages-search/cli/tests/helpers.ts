@@ -1,6 +1,7 @@
 import { join } from "path";
 
 const CLI_PATH = join(import.meta.dir, "../src/cli.ts");
+const EXAMPLE_REGISTRY = join(import.meta.dir, "../../company_pages.example.json");
 
 export interface CLIResult {
   stdout: string;
@@ -25,6 +26,11 @@ export async function runCLI(
   ]);
 
   return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
+}
+
+/** Opt into the committed fixture explicitly; production never falls back to it. */
+export function runExampleCLI(args: string[]): Promise<CLIResult> {
+  return runCLI(args, { COMPANY_PAGES_REGISTRY: EXAMPLE_REGISTRY });
 }
 
 export function parseJSON<T = unknown>(result: CLIResult): T {
