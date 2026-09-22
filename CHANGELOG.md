@@ -15,6 +15,15 @@ per-file diff commands.
 
 ### Added
 
+- **Real Excel workbook integration tests for the salary converter**
+  (`tests/test_convert_salary_excel_integration.py`, `.github/workflows/ci.yml`) -
+  generate temporary `.xlsx` files and invoke the documented converter CLI,
+  checking multiple worksheets, metadata options, Unicode text, localized
+  numbers, and compatibility with salary lookup. A workbook without salary
+  headers must fail without creating an output file. CI installs `openpyxl`
+  across the Python matrix; local runs without this optional dependency skip
+  the two integration cases while retaining the existing dependency-free tests.
+
 - **`documents/projects/` portfolio ingestion in `/setup` (Path A)** (`documents/README.md`,
   `.claude/commands/setup.md`, `.claude/commands/reset.md`, `tests/test_setup_command.py`) -
   onboards project writeups, case studies, and documentation (`.md`, `.txt`, `.pdf`)
@@ -59,6 +68,19 @@ per-file diff commands.
   implementation. Thresholds are calibrated for the stock moderncv and `cover.cls`
   geometry. Tests use synthetic page geometry, so they need neither Poppler nor a
   LaTeX toolchain.
+
+### Changed
+
+- **`/add-template` keeps a registered template's intermediates in `build/`**
+  (#473, `.claude/commands/add-template.md`, `.gitignore`,
+  `tests/test_add_template_build_dir.py`) - the elicited compile command
+  now redirects intermediates (`.aux`, `.log`, ...) to a `build/` folder beside the source
+  and moves the PDF back, so Step 4's test-compile cleanup deletes one folder instead of
+  enumerating LaTeX extensions. The LaTeX command deletes the previous PDF first, so a
+  failed compile leaves no stale PDF for `/apply` to inspect. Toolchains with nothing to
+  redirect (`typst compile`) keep their command unchanged. The `ACTIVE-TEMPLATE` block now
+  tells `/apply` to run the command from the output directory and to delete `build/` in
+  its Step 5e cleanup. Stock templates are unchanged.
 
 ### Fixed
 
