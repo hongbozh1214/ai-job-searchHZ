@@ -10,6 +10,7 @@ matches Step 4's existing rules exactly - the location_verdict legacy
 migration, the deadline null-is-not-a-correction rule, and verbatim
 strengths/gaps persistence.
 """
+import csv
 import json
 import subprocess
 import sys
@@ -32,6 +33,7 @@ def entry(**over):
         "deadline": None,
         "status": "new",
         "portal": "linkedin-search",
+        "market": "europe",
     }
     base.update(over)
     return base
@@ -48,10 +50,15 @@ class RankStateCase(unittest.TestCase):
         self.state.write_text(json.dumps({"seen": seen}), encoding="utf-8")
 
     def run_tool(self, *args, expect=0):
+        command = [sys.executable, str(TOOL), *args]
+        if "--market" not in args:
+            command.extend(["--market", "europe"])
+        command.extend(["--state", str(self.state), "--today", TODAY])
         proc = subprocess.run(
-            [sys.executable, str(TOOL), *args, "--state", str(self.state), "--today", TODAY],
+            command,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         self.assertEqual(proc.returncode, expect, proc.stderr)
         return json.loads(proc.stdout)
@@ -105,6 +112,58 @@ class Candidates(RankStateCase):
         self.assertEqual([row["key"] for row in out["selected"]], ["b"])
         self.assertEqual(out["excluded_by_tracker"], 1)
 
+    def test_tracker_exclusion_handles_utf8_bom_and_reordered_columns(self):
+        self.write_state({"a": entry(company="Acme", title="SOC Analyst"), "b": entry(company="Other")})
+        tracker = self.tmp / "tracker.csv"
+        # A spreadsheet export can prepend a BOM to either matching column.
+        for encoding in ("utf-8", "utf-8-sig"):
+            for csv_text in (
+                "date,company,role\r\n2026-08-01,ACME,soc analyst\r\n",
+                "company,role,date\r\nACME,soc analyst,2026-08-01\r\n",
+                "role,company,date\r\nsoc analyst,ACME,2026-08-01\r\n",
+            ):
+                with self.subTest(encoding=encoding, header=csv_text.splitlines()[0]):
+                    tracker.write_bytes(csv_text.encode(encoding))
+                    out = self.run_tool("candidates", "--tracker", str(tracker))
+                    self.assertEqual([row["key"] for row in out["selected"]], ["b"])
+                    self.assertEqual(out["excluded_by_tracker"], 1)
+
+    def test_tracker_exclusion_preserves_unicode_identity(self):
+        # Use the standard /outcome header and the real candidates CLI.
+        header = (
+            "date,company,sector,role,role_type,channel,status,contact_person,"
+            "fit_rating,notes,cv_file,cover_letter_file,source,deadline"
+        ).split(",")
+        cases = (
+            # Tracked company/role, candidate company/title, expected exclusion.
+            ("Acme", "设计师", "Acme", "工程师", False),
+            ("Acme", "工程师", "Acme", "工程师", True),
+            ("腾讯", "Engineer", "腾讯", "Engineer", True),
+            ("腾讯", "Engineer", "阿里巴巴", "Engineer", False),
+            ("Компания", "Инженер", "КОМПАНИЯ", "ИНЖЕНЕР", True),
+            ("Café", "Engineer", "Cafe\u0301", "Engineer", True),
+            ("Straße", "Engineer", "STRASSE", "Engineer", True),
+            ("कला Labs", "Engineer", "कल Labs", "Engineer", False),
+            ("Acme, Inc.", "SOC Analyst", "ACME_INC", "soc-analyst", True),
+        )
+        tracker = self.tmp / "tracker.csv"
+        for company, role, candidate_company, title, excluded in cases:
+            with self.subTest(tracked=(company, role), candidate=(candidate_company, title)):
+                self.write_state({
+                    "candidate": entry(company=candidate_company, title=title),
+                    "other": entry(company="Other", title="Untracked role"),
+                })
+                with tracker.open("w", encoding="utf-8", newline="") as fh:
+                    writer = csv.DictWriter(fh, fieldnames=header)
+                    writer.writeheader()
+                    writer.writerow({"date": TODAY, "company": company, "role": role, "status": "applied"})
+                out = self.run_tool("candidates", "--tracker", str(tracker))
+                self.assertEqual(
+                    [row["key"] for row in out["selected"]],
+                    ["other"] if excluded else ["candidate", "other"],
+                )
+                self.assertEqual(out["excluded_by_tracker"], int(excluded))
+
     def test_focus_filters_on_title_company_and_stored_fit_notes(self):
         self.write_state(
             {
@@ -128,14 +187,41 @@ class Candidates(RankStateCase):
         out = self.run_tool("candidates", "--all", "--tracker", str(self.tmp / "n.csv"))
         self.assertEqual(sorted(row["key"] for row in out["selected"]), ["a", "b", "d"])
 
+    def test_market_filter_excludes_other_and_legacy_unknown_entries(self):
+        self.write_state(
+            {
+                "eu": entry(title="EU Role", market="europe"),
+                "fi": entry(title="FI Role", market="finland"),
+                "legacy": entry(title="Legacy Role", market=None),
+            }
+        )
+        out = self.run_tool(
+            "candidates", "--market", "europe", "--tracker", str(self.tmp / "n.csv")
+        )
+        self.assertEqual([row["key"] for row in out["selected"]], ["eu"])
+        self.assertEqual(out["market"], "europe")
+        self.assertEqual(out["excluded_by_market"], 1)
+        self.assertEqual(out["unknown_market"], 1)
+
     def test_missing_state_file_exits_nonzero(self):
         proc = subprocess.run(
             [sys.executable, str(TOOL), "candidates", "--state", str(self.tmp / "nope.json"),
-             "--tracker", str(self.tmp / "n.csv")],
-            capture_output=True, text=True,
+             "--tracker", str(self.tmp / "n.csv"), "--market", "europe"],
+            capture_output=True, text=True, encoding="utf-8",
         )
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("not found", proc.stderr + proc.stdout)
+
+    def test_market_is_required_at_the_cli_boundary(self):
+        self.write_state({"a": entry()})
+        proc = subprocess.run(
+            [sys.executable, str(TOOL), "candidates", "--state", str(self.state)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("--market", proc.stderr)
 
 
 class Sweep(RankStateCase):
@@ -197,6 +283,23 @@ class Sweep(RankStateCase):
         self.assertEqual([r["key"] for r in out["newly_expired"]], ["past"])
         self.assertFalse(out["written"])
         self.assertEqual(self.read_state()["past"]["status"], "ranked")
+
+    def test_market_filter_only_sweeps_the_selected_market(self):
+        self.write_state(
+            {
+                "eu": entry(status="ranked", deadline="2026-09-01", market="europe"),
+                "fi": entry(status="ranked", deadline="2026-09-01", market="finland"),
+                "legacy": entry(status="ranked", deadline="2026-09-01", market=None),
+            }
+        )
+        out = self.run_tool("sweep", "--write", "--market", "europe")
+        self.assertEqual([row["key"] for row in out["newly_expired"]], ["eu"])
+        self.assertEqual(out["excluded_by_market"], 1)
+        self.assertEqual(out["unknown_market"], 1)
+        stored = self.read_state()
+        self.assertEqual(stored["eu"]["status"], "expired")
+        self.assertEqual(stored["fi"]["status"], "ranked")
+        self.assertEqual(stored["legacy"]["status"], "ranked")
 
 
 class Apply(RankStateCase):
@@ -391,6 +494,35 @@ class Apply(RankStateCase):
         )
         self.assertEqual(out["errors"][0]["key"], "ghost")
 
+    def test_market_filter_rejects_cross_market_and_unknown_writes(self):
+        self.write_state(
+            {
+                "eu": entry(market="europe"),
+                "fi": entry(market="finland"),
+                "legacy": entry(market=None),
+            }
+        )
+        out = self.run_tool(
+            "apply",
+            "--market",
+            "europe",
+            "--results",
+            self.results(
+                [
+                    {"key": "eu", "status": "expired"},
+                    {"key": "fi", "status": "expired"},
+                    {"key": "legacy", "status": "expired"},
+                ]
+            ),
+            expect=1,
+        )
+        self.assertEqual([row["key"] for row in out["expired"]], ["eu"])
+        self.assertEqual({error["key"] for error in out["errors"]}, {"fi", "legacy"})
+        stored = self.read_state()
+        self.assertEqual(stored["eu"]["status"], "expired")
+        self.assertEqual(stored["fi"]["status"], "new")
+        self.assertEqual(stored["legacy"]["status"], "new")
+
     def test_missing_score_dimension_is_an_error(self):
         self.write_state({"a": entry()})
         out = self.run_tool(
@@ -414,6 +546,40 @@ class Apply(RankStateCase):
             "--dry-run",
         )
         self.assertEqual(self.read_state()["a"]["status"], "new")
+
+    def test_invalid_scores_report_errors_without_changing_the_entry(self):
+        dimensions = ("technical", "experience", "behavioral", "career")
+        invalid = (-1, 101, True, False, float("nan"), float("inf"), -float("inf"), 10**400)
+        for dimension in dimensions:
+            for value in invalid:
+                with self.subTest(dimension=dimension, value=value):
+                    original = entry(status="ranked", rank_score=70, strengths=["keep"])
+                    self.write_state({"a": original, "b": entry()})
+                    scores = dict.fromkeys(dimensions, 50)
+                    scores[dimension] = value
+                    out = self.run_tool(
+                        "apply", "--results", self.results([
+                            {"key": "a", "status": "scored", "scores": scores},
+                            {"key": "b", "status": "scored", "scores": dict.fromkeys(dimensions, 80)},
+                        ]), expect=1,
+                    )
+                    self.assertEqual(len(out["errors"]), 1)
+                    self.assertEqual(out["errors"][0]["key"], "a")
+                    self.assertIn(dimension, out["errors"][0]["error"])
+                    self.assertEqual(self.read_state()["a"], original)
+                    self.assertEqual([row["key"] for row in out["ranked"]], ["b"])
+                    self.assertEqual(self.read_state()["b"]["rank_score"], 80)
+
+    def test_score_boundaries_and_fractional_scores_remain_valid(self):
+        for value, expected in ((0, 0), (100, 100), (72.5, 73)):
+            with self.subTest(value=value):
+                self.write_state({"a": entry()})
+                out = self.run_tool("apply", "--results", self.results([
+                    {"key": "a", "status": "scored", "scores": dict.fromkeys(
+                        ("technical", "experience", "behavioral", "career"), value)},
+                ]))
+                self.assertEqual(out["errors"], [])
+                self.assertEqual(self.read_state()["a"]["rank_score"], expected)
 
     def test_re_scoring_an_already_ranked_job_is_idempotent(self):
         """Re-running /rank never re-scores an already-ranked job unless --all

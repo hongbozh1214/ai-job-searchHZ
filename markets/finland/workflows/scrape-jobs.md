@@ -6,4 +6,4 @@
 4. For aggregator hits, locate and prefer the employer's original posting.
 5. Record canonical URL, municipality, remote/hybrid status, posting and required working languages, contract duration, deadline, salary, and required attachments.
 6. Apply hard gates, deduplicate, and then score fit.
-7. Save results under `markets/finland/jobs/` and report blocked or incomplete sources.
+7. Save results under `markets/finland/jobs/`, write `"market": "finland"` on every corresponding `job_scraper/seen_jobs.json` entry, and report blocked or incomplete sources. Never omit or infer this field: `/rank --market finland` uses it as the state-isolation boundary.

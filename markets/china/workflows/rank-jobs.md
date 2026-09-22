@@ -49,7 +49,7 @@ Apply hard vetoes for:
 
 ## Step 4: Write Ranking Report
 
-Use `tools/rank_state.py` exactly as required by `.claude/commands/rank.md` so
+Use `tools/rank_state.py` with `--market china` exactly as required by `.claude/commands/rank.md` so
 matching China entries in `job_scraper/seen_jobs.json` move from `new` to
 `ranked` (or `expired`) and retain the canonical rank fields. Never rewrite the
 whole state file by hand. The report below is an additional China-market view.

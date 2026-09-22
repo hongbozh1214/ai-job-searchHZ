@@ -69,6 +69,26 @@ class StateAndRuntimeContractTests(unittest.TestCase):
         self.assertIn("For WebSearch results, set `source` to\n`websearch`", workflow)
         self.assertIn("tools/job_key.py", workflow)
 
+    def test_every_market_persists_and_ranks_with_an_explicit_market(self):
+        scraper = read(".claude/skills/job-scraper/SKILL.md")
+        rank = read(".claude/commands/rank.md")
+        router = read("skills/job-search/SKILL.md")
+        self.assertIn('"market": "china/europe/finland"', scraper)
+        for command in ("candidates", "sweep", "apply"):
+            command_line = next(
+                line for line in rank.splitlines()
+                if f"tools/rank_state.py {command}" in line
+            )
+            self.assertIn("--market", command_line)
+        self.assertIn("every `tools/rank_state.py` invocation via `--market`", router)
+        for market in ("china", "europe", "finland"):
+            workflow = read(f"markets/{market}/workflows/scrape-jobs.md")
+            self.assertIn(f'"market": "{market}"', workflow)
+
+    def test_feature_branches_trigger_ci_without_requiring_a_pr(self):
+        workflow = read(".github/workflows/ci.yml")
+        self.assertIn('branches: [master, "feature/**"]', workflow)
+
     def test_runtime_does_not_invent_a_specific_ai_tool(self):
         files = (
             read("CLAUDE.md"),

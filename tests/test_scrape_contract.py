@@ -136,6 +136,18 @@ class SeenJobsPostingDateTests(unittest.TestCase):
         )
 
 
+class SeenJobsMarketTests(unittest.TestCase):
+    """Every stored job must retain the market that selected its rules."""
+
+    def test_step4_schema_persists_the_selected_market(self):
+        self.assertIn("market", derive_stored_fields())
+
+    def test_legacy_market_is_never_inferred(self):
+        text = SCRAPER_SKILL.read_text(encoding="utf-8")
+        self.assertIn("`unknown_market`", text)
+        self.assertRegex(text, r"never infer or bulk-backfill their market")
+
+
 class SeenJobsDedupContinuityTests(unittest.TestCase):
     """The new key rule must not replay jobs stored under legacy keys."""
 

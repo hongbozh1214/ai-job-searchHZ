@@ -28,11 +28,11 @@ Nothing here fetches a posting or judges a fit. Scoring stays with the model;
 this only removes the state file from the conversation.
 
 Usage:
-  python3 tools/rank_state.py candidates [--all] [--focus TEXT] [--limit N]
-  python3 tools/rank_state.py sweep [--write] [--exclude KEY,KEY]
-  python3 tools/rank_state.py apply --results results.json [--dry-run]
+  python3 tools/rank_state.py candidates --market MARKET [--all] [--focus TEXT] [--limit N]
+  python3 tools/rank_state.py sweep --market MARKET [--write] [--exclude KEY,KEY]
+  python3 tools/rank_state.py apply --market MARKET --results results.json [--dry-run]
 
-Both subcommands print JSON on stdout. Exit 0 on success, 1 on a usage or
+All subcommands print JSON on stdout. Exit 0 on success, 1 on a usage or
 state error, or on `apply` when any result could not be written.
 """
 
@@ -42,6 +42,7 @@ import os
 import re
 import sys
 import tempfile
+import unicodedata
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -56,6 +57,7 @@ BANDS = ((75, "Strong Fit"), (60, "Good Fit"), (45, "Moderate Fit"), (30, "Weak 
 DEFAULT_LIMIT = 10
 URGENT_DAYS = 7
 ISO = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+MARKETS = ("china", "europe", "finland")
 
 
 def load_state(path: Path) -> tuple[dict, dict]:
@@ -97,7 +99,13 @@ def parse_iso(value) -> date | None:
 
 
 def norm(text) -> str:
-    return re.sub(r"[^a-z0-9]", "", str(text or "").lower())
+    """Ignore case and separators without discarding non-Latin identity."""
+    text = unicodedata.normalize("NFC", str(text or "").casefold())
+    # Combining marks can distinguish names even after NFC (e.g. Indic vowels).
+    return "".join(
+        char for char in text
+        if char.isalnum() or unicodedata.category(char).startswith("M")
+    )
 
 
 def tracker_pairs(path: Path) -> set[tuple[str, str]]:
@@ -107,7 +115,7 @@ def tracker_pairs(path: Path) -> set[tuple[str, str]]:
     import csv
 
     pairs = set()
-    with path.open(encoding="utf-8", newline="") as fh:
+    with path.open(encoding="utf-8-sig", newline="") as fh:
         for row in csv.DictReader(fh):
             company, role = norm(row.get("company")), norm(row.get("role"))
             if company:
@@ -130,7 +138,7 @@ def cmd_candidates(args) -> int:
     _, seen = load_state(args.state)
     excluded = tracker_pairs(args.tracker)
 
-    selected, skipped_tracker = [], 0
+    selected, skipped_tracker, skipped_market, unknown_market = [], 0, 0, 0
     for key, entry in seen.items():
         status = entry.get("status")
         if args.all:
@@ -138,6 +146,14 @@ def cmd_candidates(args) -> int:
                 continue
         elif status != "new":
             continue
+        if args.market:
+            entry_market = entry.get("market")
+            if not entry_market:
+                unknown_market += 1
+                continue
+            if entry_market != args.market:
+                skipped_market += 1
+                continue
         if (norm(entry.get("company")), norm(entry.get("title"))) in excluded:
             skipped_tracker += 1
             continue
@@ -167,10 +183,13 @@ def cmd_candidates(args) -> int:
     print(
         json.dumps(
             {
+                "market": args.market,
                 "eligible": eligible,
                 "selected": selected,
                 "deferred": max(0, eligible - len(selected)),
                 "excluded_by_tracker": skipped_tracker,
+                "excluded_by_market": skipped_market,
+                "unknown_market": unknown_market,
                 "total_entries": len(seen),
             },
             indent=2,
@@ -186,9 +205,18 @@ def cmd_sweep(args) -> int:
     exclude = {k for k in (args.exclude or "").split(",") if k}
 
     expired, closing, unparseable, checked = [], [], [], 0
+    skipped_market, unknown_market = 0, 0
     for key, entry in seen.items():
         if entry.get("status") != "ranked" or key in exclude:
             continue
+        if args.market:
+            entry_market = entry.get("market")
+            if not entry_market:
+                unknown_market += 1
+                continue
+            if entry_market != args.market:
+                skipped_market += 1
+                continue
         checked += 1
         raw = entry.get("deadline")
         if raw in (None, ""):
@@ -217,10 +245,13 @@ def cmd_sweep(args) -> int:
     print(
         json.dumps(
             {
+                "market": args.market,
                 "swept": checked,
                 "newly_expired": expired,
                 "closing_soon": sorted(closing, key=lambda r: r["deadline"]),
                 "unparseable_deadlines": unparseable,
+                "excluded_by_market": skipped_market,
+                "unknown_market": unknown_market,
                 "written": bool(args.write and expired),
             },
             indent=2,
@@ -234,8 +265,10 @@ def overall_score(scores: dict) -> int:
     total = 0.0
     for dim, weight in WEIGHTS.items():
         value = scores.get(dim)
-        if not isinstance(value, (int, float)):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise ValueError(f"missing or non-numeric score '{dim}'")
+        if not 0 <= value <= 100:
+            raise ValueError(f"score '{dim}' must be finite and between 0 and 100")
         total += float(value) * weight
     return int(total + 0.5)
 
@@ -266,6 +299,20 @@ def cmd_apply(args) -> int:
         if entry is None:
             errors.append({"key": key, "error": "no such key in seen_jobs.json"})
             continue
+        if args.market:
+            entry_market = entry.get("market")
+            if not entry_market:
+                errors.append({
+                    "key": key,
+                    "error": f"entry has no market; cannot apply a {args.market} ranking",
+                })
+                continue
+            if entry_market != args.market:
+                errors.append({
+                    "key": key,
+                    "error": f"entry belongs to market '{entry_market}', not '{args.market}'",
+                })
+                continue
 
         if result.get("status") == "expired":
             entry["status"] = "expired"
@@ -334,6 +381,7 @@ def cmd_apply(args) -> int:
     print(
         json.dumps(
             {
+                "market": args.market,
                 "ranked": ranked,
                 "vetoed": vetoed,
                 "expired": expired,
@@ -347,10 +395,30 @@ def cmd_apply(args) -> int:
     return 1 if errors else 0
 
 
+def _force_utf8_output() -> None:
+    """Write UTF-8 whatever the host's default encoding is.
+
+    A piped stdout on Windows defaults to the ANSI code page (cp1252 on most
+    Western installs), so printing a company, title or file name outside it
+    raised UnicodeEncodeError before the workflow saw any output.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)  # absent on a StringIO under test
+        if reconfigure:
+            reconfigure(encoding="utf-8")
+
+
 def main() -> int:
+    _force_utf8_output()
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--state", type=Path, default=STATE)
     common.add_argument("--today", type=date.fromisoformat, default=date.today())
+    common.add_argument(
+        "--market",
+        choices=MARKETS,
+        required=True,
+        help="restrict state reads and writes to one configured market",
+    )
 
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="command", required=True)

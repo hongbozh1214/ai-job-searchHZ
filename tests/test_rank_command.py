@@ -622,6 +622,15 @@ class RankStateToolSpec(unittest.TestCase):
             "rule 6's expiry sweep must run through the CLI, not a manual re-read",
         )
 
+    def test_every_state_tool_invocation_carries_the_selected_market(self):
+        for section, command in (
+            (self.sections.get("Step 1: Load State", ""), "tools/rank_state.py candidates"),
+            (self.sections.get("Step 3: Aggregate and Rank", ""), "tools/rank_state.py sweep"),
+            (self.sections.get("Step 4: Update State", ""), "tools/rank_state.py apply"),
+        ):
+            line = next(line for line in section.splitlines() if command in line)
+            self.assertIn("--market", line, f"{command} can cross market boundaries without --market")
+
     def test_tracker_stays_read_only(self):
         step4 = self.sections.get("Step 4: Update State", "")
         self.assertIn(
