@@ -177,7 +177,8 @@ jobs:
           # The texlive image has its own TeX Live tree. Installing Debian's
           # TeX packages there shadows it and breaks moderncv/luaotfload.
           if [ "${{ matrix.leg.name }}" = 'debian-bookworm' ]; then
-            apt-get install -y --no-install-recommends texlive-lang-chinese fonts-noto-cjk
+            # ctex under LuaLaTeX loads luatexja.sty from lang-japanese.
+            apt-get install -y --no-install-recommends texlive-lang-chinese texlive-lang-japanese fonts-noto-cjk
           else
             apt-get install -y --no-install-recommends fonts-noto-cjk
           fi
