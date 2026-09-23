@@ -174,7 +174,14 @@ jobs:
       - name: Install Chinese typesetting and fonts
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends texlive-lang-chinese fonts-noto-cjk
+          # The texlive image has its own TeX Live tree. Installing Debian's
+          # TeX packages there shadows it and breaks moderncv/luaotfload.
+          if [ "${{ matrix.leg.name }}" = 'debian-bookworm' ]; then
+            apt-get install -y --no-install-recommends texlive-lang-chinese fonts-noto-cjk
+          else
+            apt-get install -y --no-install-recommends fonts-noto-cjk
+          fi
+          kpsewhich ctex.sty
       - name: Compile Chinese CV and cover letter
         run: |
           (cd cv/chinese && lualatex -interaction=nonstopmode -halt-on-error main_example.tex)

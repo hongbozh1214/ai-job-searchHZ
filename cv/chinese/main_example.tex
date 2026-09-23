@@ -15,9 +15,11 @@
 \moderncvstyle{banking}
 \moderncvcolor{blue}
 
-% 强制姓名与章节标题使用 moderncv 强调色（蓝色）
-\renewcommand*{\firstnamestyle}[1]{{\fontsize{34}{36}\bfseries\upshape\color{color1}#1}}
-\renewcommand*{\lastnamestyle}[1]{{\fontsize{34}{36}\bfseries\upshape\color{color1}#1}}
+% moderncv 2.3.1 没有 firstnamestyle/lastnamestyle；namefont 在新旧版本都可用。
+\renewcommand*{\namefont}{\fontsize{34}{36}\bfseries\upshape}
+\colorlet{firstnamecolor}{color1}
+\colorlet{lastnamecolor}{color1}
+\colorlet{namecolor}{color1}
 \renewcommand*{\sectionstyle}[1]{{\sectionfont\color{color1}#1}}
 
 \usepackage[utf8]{inputenc}
@@ -28,15 +30,15 @@
 % \setCJKsansfont{PingFang SC}
 % \setCJKmonofont{PingFang SC}
 
-\usepackage{hyperref}
-\hypersetup{
+% moderncv 自己加载 hyperref；旧版需要将配置延后，避免选项冲突。
+\AtEndPreamble{\hypersetup{
     colorlinks=true,
     linkcolor=blue,
     filecolor=magenta,
     urlcolor=blue,
     pdftitle={[YOUR_NAME] - 简历},
-    pdfpagemode=FullScreen,
-}
+    pdfpagemode=UseNone,
+}}
 \usepackage[scale=0.77]{geometry}
 \usepackage{import}
 \usepackage{needspace}
