@@ -56,6 +56,15 @@ fork) and keep the public repository as `upstream`.
 
 For a second candidate, repeat the clone and agent registration with a different
 workspace path and agent name. Never point two candidates at the same checkout.
+If the repository is cloned inside an existing workspace, for example
+`workspace-jobs-hongbo/ai-job-search`, register the **checkout directory** as
+that agent's workspace. If you must retain the outer workspace, configure both
+skill roots explicitly for that agent and ensure file operations run in its
+checkout; do not use one shared skill directory for two candidates' local data.
+OpenClaw discovers `skills/job-search/SKILL.md` relative to its configured
+workspace, not by recursively searching an arbitrary child checkout. Run
+`python3 tools/doctor.py --agent <agent-id>` in **each** checkout to confirm
+runtime discovery before setup.
 
 ## Invoke
 
@@ -66,6 +75,11 @@ $job-search scrape --market europe
 $job-search scrape --market china
 $job-search rank --market europe
 $job-search apply --market china <job URL or pasted JD>
+$job-search profile-refresh audit
+$job-search profile-refresh linkedin
 ```
 
 The explicit market is resolved per run. The same candidate evidence is reused, while search sources, hard gates, wording, and application conventions come from the selected market overlay.
+`profile-refresh` needs no market. Supply your own LinkedIn PDF export or pasted
+profile fields under `documents/linkedin/`; this workflow produces only local
+comparison and copy-ready text. Make LinkedIn edits yourself.

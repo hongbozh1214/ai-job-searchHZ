@@ -1,6 +1,6 @@
 ---
 name: job-search
-description: Run the private AI Job Search workspace with an explicit China, Europe, or Finland market. Use for profile setup, job discovery, ranking, application drafting, outcome tracking, or interview preparation in OpenClaw.
+description: Run the private AI Job Search workspace for candidate setup, profile refresh and audit, job discovery, ranking, application drafting, outcome tracking, or interview preparation in China, Europe, or Finland using OpenClaw.
 ---
 
 # Multi-market job search
@@ -9,6 +9,8 @@ Operate this repository as the job-search workspace. The user may invoke it with
 
 ```text
 $job-search setup
+$job-search profile-refresh linkedin
+$job-search profile-refresh audit
 $job-search scrape --market finland
 $job-search analyze --market china <URL, file, or pasted JD>
 $job-search rank --market europe
@@ -20,7 +22,7 @@ Build personalization only from information the user deliberately supplies to th
 
 ## Choose the market
 
-For every `setup`, `scrape`, `analyze`, `rank`, `apply`, or `interview` run, resolve exactly one market: `china`, `europe`, or `finland`.
+For every market-specific `setup`, `scrape`, `analyze`, `rank`, `apply`, or `interview` run, resolve exactly one market: `china`, `europe`, or `finland`. `profile-refresh` is candidate-wide and needs no market; use a market preference only when explicitly requested.
 
 - Use the explicit `--market` value when supplied.
 - Otherwise reuse the market named by the user in the same message.
@@ -39,6 +41,7 @@ contradict shared facts.
 ## Route the operation
 
 - `setup`: read `.claude/commands/setup.md`, then `markets/<market>/workflows/setup-profile.md`. Initialize and edit only the gitignored files under `documents/profile/` and the selected market's personal copy under `documents/<market>/profile/`. Warn before writing personal data if `origin` is a public repository.
+- `profile-refresh`: read `.claude/commands/profile-refresh.md`. Compare the local candidate profile and supplied LinkedIn export in this checkout; `audit` reports gaps and `linkedin` also drafts field-by-field replacement text. Keep drafts local; do not open, scrape, fill or save the LinkedIn website.
 - `scrape`: read `.claude/skills/job-scraper/SKILL.md`, then `markets/<market>/workflows/scrape-jobs.md`. Invoke only sources enabled for the selected market. Do not run every installed portal.
 - `analyze`: for China, follow `markets/china/workflows/analyze-job.md`; for Europe or Finland, assess the supplied posting against the shared candidate evidence and `markets/<market>/evaluation.md` without changing ranking state.
 - `rank`: read `.claude/commands/rank.md` plus the selected market's evaluation rules. Pass the resolved market to every `tools/rank_state.py` invocation via `--market`; never rank or sweep entries from another or unknown market. For China also follow `markets/china/workflows/rank-jobs.md` and keep canonical `job_scraper/seen_jobs.json` state synchronized as that workflow specifies.

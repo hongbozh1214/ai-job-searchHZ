@@ -68,11 +68,16 @@ Your master CV — the most complete, unedited version of your professional reco
 
 ## linkedin/
 
-Your LinkedIn profile exported as a PDF.
+Your own LinkedIn profile export or manually copied current profile fields.
 
 **How to export:** On LinkedIn, go to your profile → More → Save to PDF. This exports a structured summary of your profile.
 
-**Supported formats:** `.pdf`
+**Supported formats for `$job-search profile-refresh`:** `.pdf`, `.txt`, `.md`.
+For `/setup`, the original PDF export is supported. If an export omits fields,
+paste the missing Headline, About, Experience, Education, Skills, Certifications
+or Featured content into `documents/linkedin/current-profile.md`. The new
+comparison workflow never reads your account directly and does not treat an
+omitted field as missing from the live LinkedIn page.
 
 **What `/setup` extracts:**
 - Work experience and dates (cross-referenced against your CV)
@@ -84,7 +89,10 @@ Your LinkedIn profile exported as a PDF.
 - About/summary section (used to infer behavioral profile additions)
 - Recommendations received (may enrich reference context)
 
-**Naming:** Any filename works. Only one LinkedIn export is expected; if multiple are present, `/setup` uses the most recently modified one.
+**Naming:** Any filename works. If multiple exports are present, `/setup` uses
+the most recently modified one; `profile-refresh` asks which represents the
+current profile unless you specify one. Everything in this directory is
+gitignored and must remain in the candidate's own checkout.
 
 ---
 

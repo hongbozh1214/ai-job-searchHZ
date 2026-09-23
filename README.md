@@ -151,6 +151,24 @@ material; all resulting candidate facts stay in `documents/profile/`. See
 Claude Code compatibility is retained: start that runtime in the repository and
 run `/setup`. The same local-profile privacy boundary applies.
 
+### Optional: review your LinkedIn profile text
+
+After setup, put your own LinkedIn export in `documents/linkedin/`, or paste the
+current fields into `documents/linkedin/current-profile.md`. In the conversation
+for the **same candidate's agent**, run:
+
+```text
+$job-search profile-refresh audit
+$job-search profile-refresh linkedin
+```
+
+`audit` compares local facts with supplied fields; `linkedin` also drafts
+copy-ready changes. The workflow cites local evidence and marks export sections it cannot see as
+unknown. Ask it to save a draft under the gitignored `documents/profile/` if
+you want a file to review later. It never reads or edits the LinkedIn website;
+review the text and update your profile manually. See
+[`documents/README.md`](documents/README.md#linkedin) for source formats.
+
 ### 4. Search for jobs
 
 ```bash
