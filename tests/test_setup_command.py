@@ -113,5 +113,15 @@ class SetupPathAProjectsIngestion(unittest.TestCase):
         self.assertIn("New independent project:", self.text)
 
 
+class SetupSectionPreflight(unittest.TestCase):
+    def test_section_runs_all_shared_checks_before_path_c(self):
+        step0 = _sections(COMMAND.read_text(encoding="utf-8"))["Step 0: Welcome & Choose Path"]
+        self.assertLess(step0.index("--section <name>"), step0.index("For **every** invocation"))
+        self.assertLess(step0.index("For **every** invocation"), step0.index("### Legacy tracked-profile migration"))
+        self.assertLess(step0.index("### Legacy tracked-profile migration"), step0.index("### Existing local profile compaction"))
+        self.assertLess(step0.index("### Existing local profile compaction"), step0.index("If `--section` was supplied, the shared preflight is complete"))
+        self.assertIn("Wait for the user's confirmation", step0)
+
+
 if __name__ == "__main__":
     unittest.main()

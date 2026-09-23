@@ -171,6 +171,20 @@ jobs:
         run: |
           python3 tools/verify_pdf.py cv/main_example.pdf --min-chars 100
           python3 tools/verify_pdf.py cover_letters/cover_example.pdf --min-chars 100
+      - name: Install Chinese typesetting and fonts
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends texlive-lang-chinese fonts-noto-cjk
+      - name: Compile Chinese CV and cover letter
+        run: |
+          (cd cv/chinese && lualatex -interaction=nonstopmode -halt-on-error main_example.tex)
+          test -s cv/chinese/main_example.pdf
+          (cd cover_letters/chinese && xelatex -interaction=nonstopmode -halt-on-error cover_example.tex)
+          test -s cover_letters/chinese/cover_example.pdf
+      - name: Verify Chinese PDF text
+        run: |
+          python3 tools/verify_pdf.py cv/chinese/main_example.pdf --min-chars 60 --contains '工作经历'
+          python3 tools/verify_pdf.py cover_letters/chinese/cover_example.pdf --min-chars 60 --contains '尊敬的'
       - name: Assert stock PDF structure (upstream template only)
         if: github.repository == 'MadsLorentzen/ai-job-search'
         run: |

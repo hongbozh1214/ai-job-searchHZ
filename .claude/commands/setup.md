@@ -2,15 +2,15 @@
 
 You are running the onboarding setup for the AI Job Search framework. Your goal is to collect the user's professional information and populate the local profile files so the `/apply` workflow works out of the box. Personal facts must never be written into tracked framework files.
 
-There are three paths into setup. Step 0 picks the right one; all three converge on Step 3 (local profile generation) and Step 4 (confirmation).
+There are three paths into setup. Step 0 runs the shared privacy and migration checks for every invocation, including `--section`. Full setup then chooses a path; section updates continue directly to the requested Path C section. All paths converge on Step 3 (local profile generation) and Step 4 (confirmation).
 
 ---
 
 ## Step 0: Welcome & Choose Path
 
-If `$ARGUMENTS` contains `--section <name>`, skip directly to that section in Path C for an update-only flow. Do not run the path-selection prompt below.
+If `$ARGUMENTS` contains `--section <name>`, remember the requested Path C section. **Run the shared preflight below before any Path C questions, reads, or writes.** After the preflight, skip only the `documents/` inventory, welcome message, and path-selection prompt; go directly to the selected Path C section. A section update must still finish with the applicable Step 3/4 local-file update and confirmation, and never personalize tracked files.
 
-Otherwise, first check whether this checkout contains an older personalized profile in
+For **every** invocation, including `--section`, first check whether this checkout contains an older personalized profile in
 tracked files — **before anything is written, not after**. Inspect `CLAUDE.md`,
 `.claude/skills/job-application-assistant/`, and `cv/main_example.tex` for
 non-placeholder candidate data. If found, offer the migration path below before
@@ -83,7 +83,7 @@ This one-time review is the only point where both versions should be read in ful
 Subsequent `/apply`, `/rank`, `/scrape` and `/interview` runs read the short local
 files and the tracked rules once each.
 
-Then, before greeting the user, scan the `documents/` folder. Use Glob with `documents/**/*` and count files per subfolder (`cv/`, `linkedin/`, `diplomas/`, `references/`, `projects/`, `applications/`).
+If `--section` was supplied, the shared preflight is complete: go to the requested Path C section now. Otherwise, before greeting the user, scan the `documents/` folder. Use Glob with `documents/**/*` and count files per subfolder (`cv/`, `linkedin/`, `diplomas/`, `references/`, `projects/`, `applications/`).
 
 Then welcome the user with a single message that lists three paths. The wording changes based on what was found.
 
@@ -545,7 +545,7 @@ If Path A left any STAR stubs in `07-interview-prep.md`, also note:
 
 ## Design Principles
 
-- Three onboarding paths converge on the same local profile files. Step 0 picks the right path based on what's in `documents/`. Steps 3 and 4 are shared.
+- Three onboarding paths converge on the same local profile files. Step 0 runs privacy and migration preflight on every invocation, then picks the path for full setup based on what's in `documents/`. Steps 3 and 4 are shared.
 - Path A is read-before-write and idempotent. Re-running it as documents are added does not duplicate or overwrite existing content; conflicts are surfaced for explicit resolution.
 - Path A labels inferred behavioral or style additions so the user can review them critically before relying on them.
 - Each section in Path C is a natural conversation, not a form. The user can skip optional sections.

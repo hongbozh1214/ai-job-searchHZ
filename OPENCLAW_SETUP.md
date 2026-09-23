@@ -15,18 +15,9 @@ cd /home/node/.openclaw/workspace-job-search
 git remote set-url --push origin DISABLED
 ```
 
-Install Bun/Python/LaTeX prerequisites as needed, and verify that OpenClaw
-discovers `skills/job-search/SKILL.md` plus the portal skills under
-`.agents/skills/`. Run setup once to initialize the gitignored
-`documents/profile/` directory; never put candidate facts in tracked framework
-files. A minimal dependency check is:
-
-```bash
-python3 --version
-bun --version
-lualatex --version
-xelatex --version
-```
+Install Bun/Python/LaTeX prerequisites as needed. Run setup once to initialize
+the gitignored `documents/profile/` directory; never put candidate facts in
+tracked framework files.
 
 Register the agent with this repository as its workspace. Omit `--model` to
 inherit the configured default, or add the model already authorized in your
@@ -39,6 +30,20 @@ openclaw agents add job-search \
   --json
 openclaw gateway restart
 ```
+
+Run the read-only preflight **from each checkout**, using that checkout's own
+agent ID (use the second agent's ID in its separate workspace):
+
+```bash
+python3 tools/doctor.py --agent job-search
+```
+
+The check reports Bun, Python, both LaTeX engines, local portal skill files,
+OpenClaw's actual discovery of `job-search` for that agent, and the personal
+`company_pages.json` registry. A missing registry is a warning until you choose
+employers; a copied example registry is an error. A missing dependency or
+undiscovered runtime skill gives exit code 1. It reads files and calls only
+`openclaw skills list`; it does not contact job sites or print registry entries.
 
 Use a separate local checkout/workspace per candidate or agent. The code source can
 be the same public fork, but each checkout must have its own gitignored
