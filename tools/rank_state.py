@@ -7,7 +7,7 @@ cost is paid on every run regardless of how many jobs are actually scored, and
 it grows for the life of the workspace, since seen_jobs.json is append-only by
 design and most stored entries are `skipped`.
 
-This moves the state-file traffic into code. Three subcommands:
+This moves the state-file traffic into code. Four subcommands:
 
   candidates   select the eligible entries for this run and project only the
                fields a scoring agent needs
@@ -15,6 +15,7 @@ This moves the state-file traffic into code. Three subcommands:
                a stored-date comparison, no fetch, no agent
   apply        write scoring results back to seen_jobs.json and print the
                ranked/vetoed/expired rows Step 5's report is built from
+  import-local ingest complete China inbox JDs offline before candidate selection
 
 Selection and projection follow Step 1's existing rules exactly (status
 filter, tracker exclusion, focus filter, `--limit`/`--all`); the write-back
@@ -31,6 +32,7 @@ Usage:
   python3 tools/rank_state.py candidates --market MARKET [--all] [--focus TEXT] [--limit N]
   python3 tools/rank_state.py sweep --market MARKET [--write] [--exclude KEY,KEY]
   python3 tools/rank_state.py apply --market MARKET --results results.json [--dry-run]
+  python3 tools/rank_state.py import-local --market china [--file inbox/posting.md]
 
 All subcommands print JSON on stdout. Exit 0 on success, 1 on a usage or
 state error, or on `apply` when any result could not be written.
@@ -47,7 +49,7 @@ import unicodedata
 from datetime import date, timedelta
 from pathlib import Path
 
-from job_key import make_key
+from job_key import make_key, make_url_collision_key
 
 ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "job_scraper" / "seen_jobs.json"
@@ -118,18 +120,18 @@ def norm(text) -> str:
     )
 
 
-def tracker_pairs(path: Path) -> set[tuple[str, str]]:
-    """company+role pairs already in the tracker - out of scope for ranking."""
+def tracker_pairs(path: Path) -> dict[tuple[str, str], set[str]]:
+    """Track source URLs per company+role; unknown sources still exclude by pair."""
     if not path.is_file():
-        return set()
+        return {}
     import csv
 
-    pairs = set()
+    pairs: dict[tuple[str, str], set[str]] = {}
     with path.open(encoding="utf-8-sig", newline="") as fh:
         for row in csv.DictReader(fh):
             company, role = norm(row.get("company")), norm(row.get("role"))
             if company:
-                pairs.add((company, role))
+                pairs.setdefault((company, role), set()).add(str(row.get("source") or "").rstrip("/"))
     return pairs
 
 
@@ -144,11 +146,23 @@ def entry_location_verdict(entry: dict) -> str | None:
     return legacy if legacy in ("PASS", "FAIL", "FLAG") else None
 
 
+def shortlist_eligible(entry: dict) -> bool:
+    """Use the same veto on stored rows and fresh scoring results."""
+    if entry.get("rank_eligible") is False:
+        return False
+    if entry_location_verdict(entry) == "FAIL" or entry.get("language_gate") == "FAIL":
+        return False
+    gates = entry.get("market_gates")
+    return not (isinstance(gates, dict) and any(
+        isinstance(gate, dict) and gate.get("verdict") == "FAIL" for gate in gates.values()
+    ))
+
+
 def cmd_candidates(args) -> int:
     _, seen = load_state(args.state)
     excluded = tracker_pairs(args.tracker)
 
-    selected, skipped_tracker, skipped_market, unknown_market = [], 0, 0, 0
+    selected, skipped_tracker, skipped_market, unknown_market, awaiting_local_jd = [], 0, 0, 0, 0
     for key, entry in seen.items():
         status = entry.get("status")
         if args.all:
@@ -164,7 +178,10 @@ def cmd_candidates(args) -> int:
             if entry_market != args.market:
                 skipped_market += 1
                 continue
-        if (norm(entry.get("company")), norm(entry.get("title"))) in excluded:
+        known_sources = excluded.get((norm(entry.get("company")), norm(entry.get("title"))))
+        candidate_url = str(entry.get("url") or "").rstrip("/")
+        if known_sources is not None and (not candidate_url or not known_sources - {""} or
+                                          "" in known_sources or candidate_url in known_sources):
             skipped_tracker += 1
             continue
         if args.focus:
@@ -174,6 +191,18 @@ def cmd_candidates(args) -> int:
                 + [str(b) for b in entry.get("gaps") or []]
             ).lower()
             if args.focus.lower() not in haystack:
+                continue
+        if args.market == "china":
+            saved = entry.get("job_file")
+            try:
+                if not isinstance(saved, str) or not saved.strip():
+                    raise ValueError("missing local JD path")
+                local = ((ROOT / saved) if saved else None)
+                local = local.resolve(strict=True) if local else None
+                if not local or not local.is_file() or not local.is_relative_to(args.inbox.resolve()):
+                    raise ValueError("local JD is missing or outside the inbox")
+            except (OSError, ValueError):
+                awaiting_local_jd += 1
                 continue
         selected.append(
             {
@@ -201,6 +230,7 @@ def cmd_candidates(args) -> int:
                 "excluded_by_tracker": skipped_tracker,
                 "excluded_by_market": skipped_market,
                 "unknown_market": unknown_market,
+                "awaiting_local_jd": awaiting_local_jd,
                 "total_entries": len(seen),
             },
             indent=2,
@@ -245,7 +275,7 @@ def cmd_sweep(args) -> int:
         }
         if parsed < today:
             expired.append(row)
-        elif (parsed - today).days <= URGENT_DAYS:
+        elif (parsed - today).days <= URGENT_DAYS and shortlist_eligible(entry):
             closing.append(row)
 
     if args.write and expired:
@@ -311,6 +341,14 @@ def checked_gates(value, market: str) -> dict:
     return value
 
 
+def checked_verdict(value, previous, name: str) -> str:
+    """Missing decisions may retain an existing one, never turn into PASS."""
+    verdict = previous if value is None else value
+    if not isinstance(verdict, str) or verdict not in VERDICTS:
+        raise ValueError(f"{name} requires PASS, FLAG or FAIL")
+    return verdict
+
+
 def local_job(path: Path) -> tuple[str, str, str, str]:
     """Parse an intentionally saved full JD; never accept a search snippet."""
     content = path.read_text(encoding="utf-8-sig")
@@ -357,15 +395,34 @@ def cmd_import_local(args) -> int:
             key = make_key(company, title, url)
             # Preserve legacy keys and the portal source when a scrape already
             # recorded the same posting. Never modify another market's record.
+            relative = resolved.relative_to(ROOT) if resolved.is_relative_to(ROOT) else resolved
             matches = [k for k, e in seen.items() if isinstance(e, dict) and e.get("market") == "china"
-                       and ((url and e.get("url") == url) or
-                            (norm(e.get("company")), norm(e.get("title"))) == (norm(company), norm(title)))]
+                       and ((url and e.get("url") == url) or e.get("job_file") == str(relative))]
+            if not matches:
+                # A scraped record may have no local file yet. Match the role
+                # only when neither side supplies conflicting provenance.
+                matches = [k for k, e in seen.items() if isinstance(e, dict) and e.get("market") == "china"
+                           and (norm(e.get("company")), norm(e.get("title"))) == (norm(company), norm(title))
+                           and not e.get("job_file") and not e.get("url") and not url]
             if len(matches) > 1:
                 raise ValueError("ambiguous duplicate records: " + ", ".join(matches))
-            key = matches[0] if matches else key
-            if key in seen and seen[key].get("market") != "china":
-                raise ValueError(f"key {key} belongs to another market; cannot overwrite")
-            relative = resolved.relative_to(ROOT) if resolved.is_relative_to(ROOT) else resolved
+            if matches:
+                key = matches[0]
+                old_url = seen[key].get("url") or ""
+                if old_url and url and old_url != url:
+                    raise ValueError(f"{key} has a different source URL; keep the postings separate")
+            elif key in seen:
+                if not url:
+                    raise ValueError("company and role already have a different posting; add a source URL")
+                key = make_url_collision_key(company, title, url)
+            if key in seen and not matches:
+                raise ValueError(f"key collision at {key}; cannot overwrite another posting")
+            if not matches and not url and any(
+                isinstance(e, dict) and e.get("market") == "china" and
+                (norm(e.get("company")), norm(e.get("title"))) == (norm(company), norm(title))
+                for e in seen.values()
+            ):
+                raise ValueError("same company and role already exist; supply a source URL to disambiguate")
             digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
             existing = seen.get(key, {})
             if existing.get("job_file_hash") == digest and existing.get("job_file") == str(relative):
@@ -450,24 +507,32 @@ def cmd_apply(args) -> int:
         try:
             score = overall_score(result.get("scores") or {})
             gates = checked_gates(result.get("market_gates"), args.market)
+            location_verdict = checked_verdict(
+                result.get("location_verdict"), entry_location_verdict(entry), "location_verdict"
+            )
+            language_gate = checked_verdict(result.get("language_gate"), entry.get("language_gate"), "language_gate")
         except ValueError as exc:
             errors.append({"key": key, "error": str(exc)})
             continue
 
-        legacy = entry_location_verdict(entry)
         if entry.get("location") in ("PASS", "FAIL", "FLAG"):
             entry.pop("location", None)  # legacy verdict, never a place
         entry["status"] = "ranked"
         entry["rank_score"] = score
         entry["rank_verdict"] = band(score)
         entry["rank_date"] = today.isoformat()
-        entry["location_verdict"] = result.get("location_verdict") or legacy or "PASS"
-        entry["language_gate"] = result.get("language_gate") or "PASS"
+        entry["location_verdict"] = location_verdict
+        entry["language_gate"] = language_gate
         entry["market_gates"] = gates
+        entry["rank_eligible"] = shortlist_eligible({**entry, "rank_eligible": True})
         if entry["language_gate"] == "PASS":
             entry.pop("language_note", None)
         else:
-            entry["language_note"] = result.get("language_note")
+            entry["language_note"] = result.get("language_note") or entry.get("language_note")
+        if result.get("location_note"):
+            entry["location_note"] = result["location_note"]
+        elif location_verdict == "PASS":
+            entry.pop("location_note", None)
         # Absence is not a correction: a fetch that degraded to a listing page
         # returns no deadline, and blanking a stored one would erase a real
         # date and make the entry immortal to rule 6's sweep.
@@ -491,7 +556,9 @@ def cmd_apply(args) -> int:
                 "location_verdict": entry["location_verdict"],
                 "language_gate": entry["language_gate"],
                 "language_note": entry.get("language_note"),
+                "location_note": entry.get("location_note"),
                 "market_gates": gates,
+                "rank_eligible": entry["rank_eligible"],
                 "deadline": entry.get("deadline"),
                 "posted_date": entry.get("posted_date"),
                 "urgent": bool(parsed and today <= parsed <= today + timedelta(days=URGENT_DAYS)),
@@ -504,10 +571,8 @@ def cmd_apply(args) -> int:
         save_state(args.state, doc)
 
     rows.sort(key=lambda r: (r["score"], r["urgent"]), reverse=True)
-    veto = lambda r: (r["location_verdict"] == "FAIL" or r["language_gate"] == "FAIL"
-                      or any(g["verdict"] == "FAIL" for g in r["market_gates"].values()))
-    vetoed = [r for r in rows if veto(r)]
-    ranked = [r for r in rows if not veto(r)]
+    vetoed = [r for r in rows if not r["rank_eligible"]]
+    ranked = [r for r in rows if r["rank_eligible"]]
     print(
         json.dumps(
             {
@@ -555,6 +620,7 @@ def main() -> int:
 
     cand = sub.add_parser("candidates", parents=[common], help="select the entries to score")
     cand.add_argument("--tracker", type=Path, default=TRACKER)
+    cand.add_argument("--inbox", type=Path, default=INBOX, help="China inbox; candidates must have a readable local JD")
     cand.add_argument("--all", action="store_true", help="include every non-skipped status")
     cand.add_argument("--focus", help="substring filter over title, company and stored fit notes")
     cand.add_argument("--limit", type=int, default=DEFAULT_LIMIT, help="0 for no cap")

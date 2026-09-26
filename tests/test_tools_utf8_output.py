@@ -81,6 +81,7 @@ class ToolsWriteUtf8(unittest.TestCase):
         results.write_text(json.dumps([{
             "key": "a", "status": "scored",
             "scores": {"technical": 80, "experience": 80, "behavioral": 80, "career": 80},
+            "location_verdict": "PASS", "language_gate": "PASS",
             "market_gates": {name: {"verdict": "PASS"} for name in
                              ("authorization", "contract", "compensation", "mobility")},
         }]), encoding="utf-8")

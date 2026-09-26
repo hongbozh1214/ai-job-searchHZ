@@ -19,7 +19,9 @@ under `## Paste Full JD Below` (at least 160 characters). A search snippet,
 empty placeholder or symlink outside the inbox is rejected and reported; ask
 the user to provide the full JD. It reuses any matching China scrape entry,
 keeps its original URL and source, and marks changed local content as `new` for
-re-ranking. It never uploads the JD or fetches a job board. Do not insert
+re-ranking. Distinct source URLs retain separate state entries even when company
+and role names match; when a second file has the same identity and no URL, ask
+for a source URL rather than overwrite the first. It never uploads the JD or fetches a job board. Do not insert
 `manual_required` snippets directly into scoring results.
 
 If none exist, tell the user to save job descriptions as:
@@ -46,7 +48,8 @@ If the profile is too sparse, stop and ask the user to run `$job-search setup --
 Run `candidates --market china` and score only selected rows with `job_file` by
 reading that file. Do not run WebFetch on its source URL. If a candidate lacks
 `job_file`, ask for a complete inbox JD and import it before scoring; never
-score from a search snippet. Use the canonical dimensions, weights, veto handling, and state tools in
+score from a search snippet. The `awaiting_local_jd` count reports those rows,
+which do not use a scoring batch slot. Use the canonical dimensions, weights, veto handling, and state tools in
 `.claude/commands/rank.md`. The China rules below are market-specific gates and
 risk notes, not a second incompatible scoring or persistence system.
 

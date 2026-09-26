@@ -112,6 +112,15 @@ class Candidates(RankStateCase):
         self.assertEqual([row["key"] for row in out["selected"]], ["b"])
         self.assertEqual(out["excluded_by_tracker"], 1)
 
+    def test_distinct_posting_url_remains_rankable_when_another_role_variant_is_tracked(self):
+        self.write_state({"same": entry(url="https://example.com/123456"),
+                          "distinct": entry(url="https://example.com/654321")})
+        tracker = self.tmp / "tracker.csv"
+        tracker.write_text("company,role,source\nAcme,SOC Analyst,https://example.com/123456\n", encoding="utf-8")
+        out = self.run_tool("candidates", "--tracker", str(tracker))
+        self.assertEqual([r["key"] for r in out["selected"]], ["distinct"])
+        self.assertEqual(out["excluded_by_tracker"], 1)
+
     def test_tracker_exclusion_handles_utf8_bom_and_reordered_columns(self):
         self.write_state({"a": entry(company="Acme", title="SOC Analyst"), "b": entry(company="Other")})
         tracker = self.tmp / "tracker.csv"
@@ -301,14 +310,35 @@ class Sweep(RankStateCase):
         self.assertEqual(stored["fi"]["status"], "ranked")
         self.assertEqual(stored["legacy"]["status"], "ranked")
 
+    def test_vetoed_jobs_are_not_closing_soon_but_can_still_expire(self):
+        self.write_state({
+            "new-veto": entry(status="ranked", deadline="2026-09-04", rank_eligible=False,
+                              market_gates={"authorization": {"verdict": "FAIL", "reason": "permit"}}),
+            "legacy-veto": entry(status="ranked", deadline="2026-09-04",
+                                 market_gates={"authorization": {"verdict": "FAIL", "reason": "permit"}}),
+            "eligible": entry(status="ranked", deadline="2026-09-04", rank_eligible=True),
+            "past-veto": entry(status="ranked", deadline="2026-09-01", rank_eligible=False),
+        })
+        out = self.run_tool("sweep", "--write")
+        self.assertEqual([r["key"] for r in out["closing_soon"]], ["eligible"])
+        self.assertEqual([r["key"] for r in out["newly_expired"]], ["past-veto"])
+        self.assertEqual(self.read_state()["past-veto"]["status"], "expired")
+
 
 class Apply(RankStateCase):
     def results(self, payload):
         path = self.tmp / "results.json"
+        state = self.read_state() if self.state.exists() else {}
         for result in payload:
             if result.get("status") == "scored" and "market_gates" not in result:
                 result["market_gates"] = {name: {"verdict": "PASS"} for name in
                                           ("authorization", "contract", "compensation", "mobility")}
+            if result.get("status") == "scored":
+                previous = state.get(result.get("key"), {})
+                if "location_verdict" not in result and previous.get("location_verdict", previous.get("location")) not in ("PASS", "FAIL", "FLAG"):
+                    result["location_verdict"] = "PASS"
+                if "language_gate" not in result and previous.get("language_gate") not in ("PASS", "FAIL", "FLAG"):
+                    result["language_gate"] = "PASS"
         path.write_text(json.dumps(payload), encoding="utf-8")
         return str(path)
 
@@ -661,6 +691,47 @@ class Apply(RankStateCase):
                 self.assertEqual(out["errors"][0]["key"], "a")
                 self.assertEqual(self.read_state()["a"]["status"], "new")
 
+    def test_location_and_language_must_be_explicit_or_preserve_existing_verdict(self):
+        self.write_state({"a": entry(language_gate="FAIL", language_note="mandatory language")})
+        scores = dict.fromkeys(("technical", "experience", "behavioral", "career"), 90)
+        out = self.run_tool("apply", "--results", self.results([
+            {"key": "a", "status": "scored", "scores": scores, "location_verdict": "PASS"},
+        ]))
+        self.assertEqual([row["key"] for row in out["vetoed"]], ["a"])
+        self.assertFalse(self.read_state()["a"]["rank_eligible"])
+        gates = {name: {"verdict": "PASS"} for name in
+                 ("authorization", "contract", "compensation", "mobility")}
+        for verdict in ("fail", "", 123):
+            with self.subTest(verdict=verdict):
+                payload = [{"key": "a", "status": "scored", "scores": scores,
+                            "market_gates": gates, "location_verdict": verdict,
+                            "language_gate": "PASS"}]
+                file = self.tmp / "invalid.json"
+                file.write_text(json.dumps(payload))
+                result = self.run_tool("apply", "--results", str(file), expect=1)
+                self.assertIn("location_verdict", result["errors"][0]["error"])
+                self.assertFalse(self.read_state()["a"]["rank_eligible"])
+        file.write_text(json.dumps([{"key": "a", "status": "scored", "scores": scores,
+                                    "market_gates": gates, "location_verdict": "PASS", "language_gate": "fail"}]))
+        result = self.run_tool("apply", "--results", str(file), expect=1)
+        self.assertIn("language_gate", result["errors"][0]["error"])
+        file.write_text(json.dumps([{"key": "a", "status": "scored", "scores": scores,
+                                    "market_gates": gates, "location_verdict": "PASS", "language_gate": "PASS"}]))
+        self.assertEqual([row["key"] for row in self.run_tool("apply", "--results", str(file))["ranked"]], ["a"])
+        self.assertTrue(self.read_state()["a"]["rank_eligible"], "a genuinely new PASS can revive a vetoed role")
+
+    def test_explicit_verdicts_required_for_new_entries(self):
+        self.write_state({"a": entry()})
+        gates = {name: {"verdict": "PASS"} for name in
+                 ("authorization", "contract", "compensation", "mobility")}
+        file = self.tmp / "missing.json"
+        file.write_text(json.dumps([{"key": "a", "status": "scored",
+                                    "scores": dict.fromkeys(("technical", "experience", "behavioral", "career"), 90),
+                                    "market_gates": gates}]))
+        out = self.run_tool("apply", "--results", str(file), expect=1)
+        self.assertIn("location_verdict", out["errors"][0]["error"])
+        self.assertEqual(self.read_state()["a"]["status"], "new")
+
 
 class LocalChina(RankStateCase):
     def setUp(self):
@@ -680,10 +751,12 @@ class LocalChina(RankStateCase):
         first = self.run_tool("import-local", "--market", "china", "--inbox", str(self.inbox), "--file", str(file))
         key = first["imported"][0]["key"]
         self.assertEqual(self.read_state()[key]["fetch_status"], "ready")
-        self.assertEqual(self.run_tool("candidates", "--market", "china", "--tracker", str(self.tmp / "none"))
+        self.assertEqual(self.run_tool("candidates", "--market", "china", "--inbox", str(self.inbox),
+                                       "--tracker", str(self.tmp / "none"))
                          ["selected"][0]["job_file"], str(file))
         result = {"key": key, "status": "scored", "scores": dict.fromkeys(
             ("technical", "experience", "behavioral", "career"), 80),
+            "location_verdict": "PASS", "language_gate": "PASS",
             "market_gates": {name: {"verdict": "PASS"} for name in
                              ("compensation", "work_schedule", "employment_type",
                               "social_insurance", "role_type", "qualifications")}}
@@ -718,6 +791,53 @@ class LocalChina(RankStateCase):
                             "--file", str(self.jd()))
         self.assertEqual(out["imported"][0]["key"], "legacy")
         self.assertEqual(len(self.read_state()), 1)
+
+    def test_distinct_urls_keep_distinct_inbox_records_and_reimport_idempotently(self):
+        a = self.jd(self.jd().read_text(encoding="utf-8").replace("# 工程师 @ 公司", "# Engineer @ Acme"))
+        b = self.inbox / "another-location.md"
+        b.write_text(a.read_text(encoding="utf-8").replace("456789", "654321"), encoding="utf-8")
+        out = self.run_tool("import-local", "--market", "china", "--inbox", str(self.inbox))
+        self.assertEqual(len(out["imported"]), 2)
+        self.assertEqual(len(self.read_state()), 2)
+        self.assertEqual({e["url"] for e in self.read_state().values()},
+                         {"https://example.com/456789", "https://example.com/654321"})
+        self.assertEqual(len(self.run_tool("import-local", "--market", "china", "--inbox", str(self.inbox))["unchanged"]), 2)
+        audit = subprocess.run([sys.executable, str(REPO / "tools/job_key.py"), "--audit", str(self.state)],
+                               capture_output=True, text=True)
+        self.assertEqual(audit.returncode, 0, audit.stdout)
+        self.assertEqual(json.loads(audit.stdout)["keys_not_matching_current_rule"], 0)
+
+    def test_without_url_another_file_must_not_overwrite_existing_role(self):
+        first = self.jd().read_text(encoding="utf-8").replace("**Source URL:** https://example.com/456789", "")
+        a = self.jd(first)
+        b = self.inbox / "z-different-posting.md"
+        b.write_text(first + "\n新职位新增的要求", encoding="utf-8")
+        out = self.run_tool("import-local", "--market", "china", "--inbox", str(self.inbox), expect=1)
+        self.assertEqual(len(out["imported"]), 1)
+        self.assertEqual(len(out["errors"]), 1)
+        self.assertEqual(len(self.read_state()), 1)
+        self.assertEqual(next(iter(self.read_state().values()))["job_file"], str(a))
+
+    def test_manual_required_records_do_not_starve_ready_china_jobs(self):
+        self.write_state({**{f"blocked-{i}": entry(market="china", fetch_status="manual_required") for i in range(10)},
+                          "ready": entry(market="china", job_file=str(self.jd()), fetch_status="ready")})
+        out = self.run_tool("candidates", "--market", "china", "--inbox", str(self.inbox),
+                            "--tracker", str(self.tmp / "none.csv"))
+        self.assertEqual([r["key"] for r in out["selected"]], ["ready"])
+        self.assertEqual(out["awaiting_local_jd"], 10)
+        self.assertEqual(out["deferred"], 0)
+
+    def test_deleted_local_jd_is_not_selected_or_read_outside_inbox(self):
+        old = self.jd()
+        outside = self.tmp / "outside.md"
+        outside.write_text(old.read_text(encoding="utf-8"), encoding="utf-8")
+        self.write_state({"missing": entry(market="china", job_file=str(self.inbox / "gone.md")),
+                          "outside": entry(market="china", job_file=str(outside)),
+                          "ready": entry(market="china", job_file=str(old))})
+        out = self.run_tool("candidates", "--market", "china", "--inbox", str(self.inbox),
+                            "--tracker", str(self.tmp / "none.csv"))
+        self.assertEqual([r["key"] for r in out["selected"]], ["ready"])
+        self.assertEqual(out["awaiting_local_jd"], 2)
 
 
 if __name__ == "__main__":

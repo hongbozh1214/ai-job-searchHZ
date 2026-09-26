@@ -41,7 +41,7 @@ Follow these steps **in order**.
 
    **Deadline urgency is the one clock that does apply to a drafted row.** Show the `deadline` column when the row has one and leave it blank otherwise. Mark a deadline within 7 days with 🔥 and one that has already passed with ⚠, on the same 7-day threshold `/rank` Step 3 uses so the two commands never disagree. A passed deadline on a `drafted` row is the failure this column exists to catch - documents written, never sent, and now unsendable - so name it in one line under the table rather than leaving the user to compare dates. This changes nothing about the follow-up offer: a drafted row is still never chased, because nobody is late replying to something that was never sent.
 
-4. Derive the archive folder name: `documents/applications/<company>_<role>/` by the **Subfolder naming** rule in `documents/README.md`. Check whether the folder and an `outcome.md` already exist - if so, you are updating, not creating.
+4. Derive the archive folder name: `documents/applications/<company>_<role>/` by the **Subfolder naming** rule in `documents/README.md`. For a China row with `china_posting_key:<slug>` in notes, use `documents/applications/<slug>/` everywhere this command refers to its archive (including follow-up and stale branches). Check whether the folder and an `outcome.md` already exist - if so, you are updating, not creating.
 
 ---
 
@@ -148,7 +148,7 @@ Wait for the user's explicit response before writing anything.
 **Execution.** For each application the user confirms:
 
 1. **Update Tracker:** update the row's `status` column to `no_response` (using the canonical spelling from **Tracker status vocabulary**). Append `stale resolved no_response (YYYY-MM-DD)` to `notes`. Follow Step 4's rule: never restructure the CSV, preserve all other columns intact.
-2. **Update Archive:** derive `documents/applications/<company>_<role>/` per the **Subfolder naming** rule. If the folder exists, update or write `outcome.md` with:
+2. **Update Archive:** derive the archive using Step 1.4 (including `china_posting_key` when present). If the folder exists, update or write `outcome.md` with:
    - `**Status:** no_response`
    - `**Date resolved:** YYYY-MM-DD`
    - Append to `## Notes`: `- Stale resolution: marked no_response after [N] days quiet (YYYY-MM-DD)`
@@ -159,10 +159,10 @@ Wait for the user's explicit response before writing anything.
 
 ## Step 3: Archive the Application Materials
 
-Create or update `documents/applications/<company>_<role>/`. All content here is personal data - the folder is already gitignored (`documents/applications/**`), so nothing needs redacting.
+Create or update the application archive from Step 1.4 (normally `documents/applications/<company>_<role>/`, or the China posting-specific slug). All content here is personal data - the folder is already gitignored (`documents/applications/**`), so nothing needs redacting.
 
-1. **`cv_draft.tex` and `cover_letter.tex`** - copy (never move) the submitted files. Locate them via the tracker row's `cv_file`/`cover_letter_file` columns; if those are empty, look for `cv/main_<company>_<role>.*` and `cover_letters/cover_<company>_<role>.*`, deriving `<company>_<role>` by the **Subfolder naming** rule in `documents/README.md`. **Never widen those globs to the company alone** - two roles at one company both match it, and the first hit wins silently. If a file already exists in the archive, leave it - the archived version is what was actually submitted. If nothing matches (application made outside `/apply`), skip with a note rather than widening the search: a sibling role's CV recorded as what you submitted is worse than no file at all.
-2. **`job_posting.md`** - if it already exists, leave it. Otherwise try WebFetch on the tracker row's `source` URL and save the posting text, retrying a 403 with browser headers per `.claude/skills/job-application-assistant/09-web-research.md`. If the URL is dead (postings expire fast - this is exactly why the archive matters), ask the user to paste the posting, or write a stub noting the posting is unavailable. **Never reconstruct a posting from memory.**
+1. **`cv_draft.tex` and `cover_letter.tex`** - copy (never move) the submitted files. Locate them via the tracker row's `cv_file`/`cover_letter_file` columns; if those are empty, look for `cv/main_<company>_<role>.*` and `cover_letters/cover_<company>_<role>.*`, deriving `<company>_<role>` by the **Subfolder naming** rule in `documents/README.md`. **Exception:** if `notes` contains `china_text_pack:<relative-pack-path>`, confirm what the user actually sent and read that local pack for the message. When no CV/cover was submitted, do not search fallback globs or archive previously generated files: a different draft is not evidence of what was sent. **Never widen those globs to the company alone** - two roles at one company both match it, and the first hit wins silently. If a file already exists in the archive, leave it - the archived version is what was actually submitted. If nothing matches (application made outside `/apply`), skip with a note rather than widening the search: a sibling role's CV recorded as what you submitted is worse than no file at all.
+2. **`job_posting.md`** - if it already exists, leave it. For a China text-pack row, use the saved inbox JD referenced by its pack, or ask the user for the complete JD if absent; do not fetch the platform URL. Otherwise try WebFetch on the tracker row's `source` URL and save the posting text, retrying a 403 with browser headers per `.claude/skills/job-application-assistant/09-web-research.md`. If the URL is dead (postings expire fast - this is exactly why the archive matters), ask the user to paste the posting, or write a stub noting the posting is unavailable. **Never reconstruct a posting from memory.**
 3. **`outcome.md`** - write or update it in exactly the format documented in `documents/README.md`, so `/setup` Path A parses it without special cases:
 
 ```markdown

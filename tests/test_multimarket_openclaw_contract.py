@@ -85,6 +85,26 @@ class StateAndRuntimeContractTests(unittest.TestCase):
             workflow = read(f"markets/{market}/workflows/scrape-jobs.md")
             self.assertIn(f'"market": "{market}"', workflow)
 
+    def test_rank_veto_is_respected_by_downstream_readers(self):
+        for path in (".claude/commands/notion-sync.md", ".claude/skills/upskill/SKILL.md"):
+            with self.subTest(path=path):
+                rule = read(path)
+                for field in ("rank_eligible", "location_verdict", "language_gate", "market_gates"):
+                    self.assertIn(field, rule)
+                self.assertIn("FAIL", rule)
+
+    def test_china_apply_text_pack_and_full_documents_have_distinct_contracts(self):
+        shared = read(".claude/commands/apply.md")
+        china = read("markets/china/workflows/apply-job.md")
+        outcome = read(".claude/commands/outcome.md")
+        self.assertIn("markets/china/workflows/apply-job.md", shared)
+        self.assertIn("Step 6b", shared)
+        for rule in ("text-only", "Full documents", "china_text_pack:", "cv_file", "cover_letter_file",
+                     "job_search_tracker.csv", "job_posting.md", "source URL", "URL alone"):
+            self.assertIn(rule, china)
+        self.assertIn("china_text_pack:", outcome)
+        self.assertIn("do not search fallback globs", outcome)
+
     def test_feature_branches_trigger_ci_without_requiring_a_pr(self):
         workflow = read(".github/workflows/ci.yml")
         self.assertIn('branches: [master, "feature/**"]', workflow)

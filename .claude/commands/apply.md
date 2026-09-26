@@ -19,11 +19,13 @@ facts to `documents/profile/01-candidate-profile.md` in the same turn. Keep the
 local CV baseline and local workflow context consistent with it; tracked framework
 templates are not fact sources.
 
+**Market routing:** When `--market china`, follow `markets/china/workflows/apply-job.md` first. Its default is a locally saved, text-only application pack; Steps 1–6 here that require two tailored files and compiled PDFs apply to China only when the candidate explicitly requests full CV and cover-letter files. Use the shared tracker/archive Step 6b in either mode with the China-specific column values in that overlay. In both modes use the complete locally saved JD as the posting text, not a title or snippet; a URL alone is insufficient. For Europe/Finland the ordinary two-document flow below applies in full. Never claim that a text pack contains compiled CV/PDF files.
+
 **Token-efficiency rules for this workflow:**
 - Never re-Read a file whose contents are already in your context from an earlier step. If you read it in Step 1, it is still available in Step 2.
 - When dispatching the reviewer agent, pass draft content **inline in the agent prompt** rather than asking the agent to Read files you already have in memory.
 - Run the full verification checklist exactly once, at the end (Step 6). The reviewer focuses on content critique, not verification.
-- Step 5 (compile and inspect PDFs) is mandatory and non-skippable — page-break decisions are unpredictable, and source files that look fine often produce broken PDFs (orphaned entry titles, cover letters spilling to page 2, bullet fonts mismatching).
+- Step 5 (compile and inspect PDFs) is mandatory for any full-document run — page-break decisions are unpredictable, and source files that look fine often produce broken PDFs (orphaned entry titles, cover letters spilling to page 2, bullet fonts mismatching). The China text-only branch reviews its Markdown pack instead.
 
 ---
 
@@ -280,7 +282,7 @@ After all edits are applied, the two files on disk are the final drafts.
 
 ## Step 5: DRAFTER - Compile & Inspect PDFs (MANDATORY)
 
-**Never skip this step.** The source files looking fine is not sufficient — page-break decisions are unpredictable and commonly produce broken layouts (orphaned job titles separated from their bullets, cover letters spilling to 2 pages, bullet fonts not matching body text). Compile both documents and visually verify the PDFs before presenting.
+**Never skip this step when producing full CV and cover-letter files.** The China text-only mode has no PDF to compile; its local application pack instead receives the evidence and factual review specified by the China overlay. The source files looking fine is not sufficient — page-break decisions are unpredictable and commonly produce broken layouts (orphaned job titles separated from their bullets, cover letters spilling to 2 pages, bullet fonts not matching body text). Compile both documents and visually verify the PDFs before presenting.
 
 ### 5a. Compile
 
@@ -423,14 +425,14 @@ Tell the user: "Both files are ready for your review. Open them to check the fin
 
 ### Step 6b: Record the Application
 
-Do this before the optional offer below, and before ending the turn for any other reason.
+Do this before the optional offer below, and before ending the turn for any other reason. For China, also apply the text-pack/full-document tracker rules in `markets/china/workflows/apply-job.md`; this section supplies the common header, status progression and archive location.
 
 1. Read `job_search_tracker.csv`. If it does not exist, create it with the standard header (identical to `/outcome` Step 1.1, so the two commands never diverge):
    ```
    date,company,sector,role,role_type,channel,status,contact_person,fit_rating,notes,cv_file,cover_letter_file,source,deadline
    ```
    **If the file exists and its header does not end in `,deadline`, append `,deadline` to the header line only** - no data row is touched. Legacy rows then read as an empty deadline.
-2. Match existing rows case-insensitively on company and role. **On no match, or when every match holds a final status, append a new row. On a match that is still open, update it.** "Final" and "open" are defined by the **Tracker status vocabulary** in `/outcome` — the legacy space spellings `no response` / `offer declined` count as final, so a closed application never gets its row overwritten. When you append alongside a final row, say so — the earlier application to that role keeps its own row and its own outcome.
+2. Match existing rows case-insensitively on company and role; if both the new and existing source URLs are known and differ, treat them as distinct postings (China also uses the posting-specific slug in its overlay). **On no match, or when every match holds a final status, append a new row. On a match that is still open, update it.** "Final" and "open" are defined by the **Tracker status vocabulary** in `/outcome` — the legacy space spellings `no response` / `offer declined` count as final, so a closed application never gets its row overwritten. When you append alongside a final row, say so — the earlier application to that role keeps its own row and its own outcome.
 3. Values for a new row:
 
    | Column | Value |

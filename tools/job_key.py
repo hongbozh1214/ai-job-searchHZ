@@ -104,6 +104,17 @@ def make_key(company: str, title: str, url: str = "") -> str:
     return f"{company_slug}_{title_slug}"
 
 
+def make_url_collision_key(company: str, title: str, url: str) -> str:
+    """Distinguish two real postings with the same company and role.
+
+    Only use when the normal key is already occupied by a different URL; the
+    ordinary scraper and all existing keys keep their original spelling.
+    """
+    if not url:
+        raise ValueError("a URL is required to disambiguate identical roles")
+    return f"{make_key(company, title, url)}-{hashlib.sha1(url.encode('utf-8')).hexdigest()[:8]}"
+
+
 # A canonical key is "<company-slug>_<title-slug>": lowercase alphanumerics and
 # hyphens on either side of exactly one underscore. The underscore is the
 # separator, so it is the one character outside the slug alphabet that belongs.
@@ -151,7 +162,11 @@ def audit(path: Path) -> int:
     # damage: reported separately so a rename is a choice, never automatic.
     drift = [
         k for k, v in seen.items()
-        if is_canonical(k) and k != make_key(v.get("company", ""), v.get("title", ""), v.get("url", ""))
+        if is_canonical(k) and k not in (
+            make_key(v.get("company", ""), v.get("title", ""), v.get("url", "")),
+            make_url_collision_key(v.get("company", ""), v.get("title", ""), v.get("url", ""))
+            if v.get("url") else "",
+        )
     ]
 
     print(json.dumps({
