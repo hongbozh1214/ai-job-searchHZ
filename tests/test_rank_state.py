@@ -305,6 +305,10 @@ class Sweep(RankStateCase):
 class Apply(RankStateCase):
     def results(self, payload):
         path = self.tmp / "results.json"
+        for result in payload:
+            if result.get("status") == "scored" and "market_gates" not in result:
+                result["market_gates"] = {name: {"verdict": "PASS"} for name in
+                                          ("authorization", "contract", "compensation", "mobility")}
         path.write_text(json.dumps(payload), encoding="utf-8")
         return str(path)
 
@@ -594,6 +598,126 @@ class Apply(RankStateCase):
         stored = self.read_state()["a"]
         self.assertEqual(stored["rank_score"], 90)
         self.assertEqual(stored["strengths"], ["new"])
+
+    def test_expired_deadlines_never_make_the_ranking_even_with_high_scores(self):
+        self.write_state({"stored": entry(deadline="2026-09-01"),
+                          "fresh": entry(deadline="2026-09-10"),
+                          "corrected": entry(deadline="2026-09-01")})
+        full = dict.fromkeys(("technical", "experience", "behavioral", "career"), 90)
+        out = self.run_tool("apply", "--results", self.results([
+            {"key": "stored", "status": "scored", "scores": full, "deadline": None},
+            {"key": "fresh", "status": "scored", "scores": full, "deadline": "2026-09-02"},
+            {"key": "corrected", "status": "scored", "scores": full, "deadline": "2026-09-10"},
+        ]))
+        self.assertEqual({r["key"] for r in out["expired"]}, {"stored", "fresh"})
+        self.assertEqual([r["key"] for r in out["ranked"]], ["corrected"])
+        self.assertEqual(self.read_state()["fresh"]["deadline"], "2026-09-02")
+        self.assertEqual(self.read_state()["corrected"]["status"], "ranked")
+
+    def test_market_gates_veto_and_flags_persist_without_losing_score(self):
+        self.write_state({"a": entry(), "b": entry()})
+        full = dict.fromkeys(("technical", "experience", "behavioral", "career"), 90)
+        gates = {name: {"verdict": "PASS"} for name in
+                 ("authorization", "contract", "compensation", "mobility")}
+        out = self.run_tool("apply", "--results", self.results([
+            {"key": "a", "status": "scored", "scores": full,
+             "market_gates": {**gates, "authorization": {"verdict": "FAIL", "reason": "work permit required"}}},
+            {"key": "b", "status": "scored", "scores": full,
+             "market_gates": {**gates, "contract": {"verdict": "FLAG", "reason": "term unclear"}}},
+        ]))
+        self.assertEqual([r["key"] for r in out["vetoed"]], ["a"])
+        self.assertEqual([r["key"] for r in out["ranked"]], ["b"])
+        self.assertEqual(self.read_state()["a"]["market_gates"]["authorization"]["reason"], "work permit required")
+
+    def test_missing_or_invalid_market_decisions_cannot_silently_pass(self):
+        self.write_state({"a": entry()})
+        scores = dict.fromkeys(("technical", "experience", "behavioral", "career"), 90)
+        out = self.run_tool("apply", "--results", self.results([
+            {"key": "a", "status": "scored", "scores": scores, "market_gates": {}},
+        ]), expect=1)
+        self.assertIn("market_gates missing", out["errors"][0]["error"])
+        self.assertEqual(self.read_state()["a"]["status"], "new")
+
+    def test_invalid_fresh_deadline_cannot_override_known_expiry(self):
+        self.write_state({"a": entry(deadline="2026-09-01")})
+        out = self.run_tool("apply", "--results", self.results([
+            {"key": "a", "status": "scored", "deadline": "ASAP",
+             "scores": dict.fromkeys(("technical", "experience", "behavioral", "career"), 90)},
+        ]), expect=1)
+        self.assertIn("deadline", out["errors"][0]["error"])
+        self.assertEqual(self.read_state()["a"]["status"], "new")
+
+    def test_unsupported_verdict_and_missing_flag_reason_are_rejected(self):
+        self.write_state({"a": entry()})
+        for decision in ({"verdict": ["FAIL"]}, {"verdict": "FLAG"}):
+            with self.subTest(decision=decision):
+                gates = {name: {"verdict": "PASS"} for name in
+                         ("authorization", "contract", "compensation", "mobility")}
+                gates["authorization"] = decision
+                out = self.run_tool("apply", "--results", self.results([
+                    {"key": "a", "status": "scored", "market_gates": gates,
+                     "scores": dict.fromkeys(("technical", "experience", "behavioral", "career"), 90)},
+                ]), expect=1)
+                self.assertEqual(out["errors"][0]["key"], "a")
+                self.assertEqual(self.read_state()["a"]["status"], "new")
+
+
+class LocalChina(RankStateCase):
+    def setUp(self):
+        super().setUp()
+        self.inbox = self.tmp / "inbox"
+        self.inbox.mkdir()
+
+    def jd(self, content=None):
+        path = self.inbox / "company-role.md"
+        path.write_text(content or ("# 工程师 @ 公司\n**Source URL:** https://example.com/456789\n"
+                                    "**Fetch Status:** manual_required\n## Paste Full JD Below\n"
+                                    + "负责项目开发与团队协作，要求了解具体项目、开展文档编制与跟进沟通。" * 5), encoding="utf-8")
+        return path
+
+    def test_import_offline_and_rank_same_key_without_refetch(self):
+        file = self.jd()
+        first = self.run_tool("import-local", "--market", "china", "--inbox", str(self.inbox), "--file", str(file))
+        key = first["imported"][0]["key"]
+        self.assertEqual(self.read_state()[key]["fetch_status"], "ready")
+        self.assertEqual(self.run_tool("candidates", "--market", "china", "--tracker", str(self.tmp / "none"))
+                         ["selected"][0]["job_file"], str(file))
+        result = {"key": key, "status": "scored", "scores": dict.fromkeys(
+            ("technical", "experience", "behavioral", "career"), 80),
+            "market_gates": {name: {"verdict": "PASS"} for name in
+                             ("compensation", "work_schedule", "employment_type",
+                              "social_insurance", "role_type", "qualifications")}}
+        results = self.tmp / "results.json"
+        results.write_text(json.dumps([result]), encoding="utf-8")
+        out = self.run_tool("apply", "--market", "china", "--results", str(results))
+        self.assertEqual([r["key"] for r in out["ranked"]], [key])
+        again = self.run_tool("import-local", "--market", "china", "--inbox", str(self.inbox))
+        self.assertEqual(again["unchanged"][0]["key"], key)
+        self.assertEqual(self.read_state()[key]["status"], "ranked")
+        self.jd(file.read_text(encoding="utf-8") + "\n补充明确要求。")
+        updated = self.run_tool("import-local", "--market", "china", "--inbox", str(self.inbox))
+        self.assertEqual(updated["imported"][0]["key"], key)
+        self.assertEqual(self.read_state()[key]["status"], "new")
+
+    def test_manual_required_snippet_and_escape_are_rejected(self):
+        file = self.jd("# Role @ Company\n## Search Snippet\nlooks relevant\n## Paste Full JD Below\n")
+        out = self.run_tool("import-local", "--market", "china", "--inbox", str(self.inbox), expect=1)
+        self.assertEqual(len(out["errors"]), 1)
+        self.assertFalse(self.state.exists())
+        outside = self.tmp / "outside.md"
+        outside.write_text(self.jd().read_text(encoding="utf-8"), encoding="utf-8")
+        file.unlink()
+        file.symlink_to(outside)
+        out = self.run_tool("import-local", "--market", "china", "--inbox", str(self.inbox), expect=1)
+        self.assertIn("inside the China inbox", out["errors"][0]["error"])
+
+    def test_matches_scraped_record_without_creating_duplicate(self):
+        self.write_state({"legacy": entry(market="china", title="工程师", company="公司",
+                                          url="https://example.com/456789", fetch_status="manual_required")})
+        out = self.run_tool("import-local", "--market", "china", "--inbox", str(self.inbox),
+                            "--file", str(self.jd()))
+        self.assertEqual(out["imported"][0]["key"], "legacy")
+        self.assertEqual(len(self.read_state()), 1)
 
 
 if __name__ == "__main__":

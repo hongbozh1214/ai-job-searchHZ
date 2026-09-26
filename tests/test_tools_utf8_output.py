@@ -81,6 +81,8 @@ class ToolsWriteUtf8(unittest.TestCase):
         results.write_text(json.dumps([{
             "key": "a", "status": "scored",
             "scores": {"technical": 80, "experience": 80, "behavioral": 80, "career": 80},
+            "market_gates": {name: {"verdict": "PASS"} for name in
+                             ("authorization", "contract", "compensation", "mobility")},
         }]), encoding="utf-8")
         proc = run_legacy_stdout([
             TOOLS / "rank_state.py", "apply", "--market", "europe", "--results", results,

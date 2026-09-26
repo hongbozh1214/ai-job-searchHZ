@@ -37,6 +37,7 @@ state error, or on `apply` when any result could not be written.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -45,6 +46,8 @@ import tempfile
 import unicodedata
 from datetime import date, timedelta
 from pathlib import Path
+
+from job_key import make_key
 
 ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "job_scraper" / "seen_jobs.json"
@@ -58,6 +61,13 @@ DEFAULT_LIMIT = 10
 URGENT_DAYS = 7
 ISO = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MARKETS = ("china", "europe", "finland")
+INBOX = ROOT / "markets" / "china" / "jobs" / "inbox"
+REQUIRED_GATES = {
+    "china": ("compensation", "work_schedule", "employment_type", "social_insurance", "role_type", "qualifications"),
+    "europe": ("authorization", "contract", "compensation", "mobility"),
+    "finland": ("authorization", "contract", "compensation", "qualifications"),
+}
+VERDICTS = {"PASS", "FLAG", "FAIL"}
 
 
 def load_state(path: Path) -> tuple[dict, dict]:
@@ -174,6 +184,7 @@ def cmd_candidates(args) -> int:
                 "portal": entry.get("portal"),
                 "deadline": entry.get("deadline"),
                 "posted_date": entry.get("posted_date"),
+                **({"job_file": entry["job_file"]} if entry.get("job_file") else {}),
             }
         )
 
@@ -262,6 +273,8 @@ def cmd_sweep(args) -> int:
 
 
 def overall_score(scores: dict) -> int:
+    if not isinstance(scores, dict):
+        raise ValueError("scores must be an object")
     total = 0.0
     for dim, weight in WEIGHTS.items():
         value = scores.get(dim)
@@ -280,6 +293,106 @@ def band(score: int) -> str:
     return "Poor Fit"
 
 
+def checked_gates(value, market: str) -> dict:
+    """Require an explicit decision for every market rule, including unknowns."""
+    if not isinstance(value, dict):
+        raise ValueError("market_gates must be an object of gate decisions")
+    missing = set(REQUIRED_GATES[market]) - set(value)
+    if missing:
+        raise ValueError("market_gates missing: " + ", ".join(sorted(missing)))
+    for name, decision in value.items():
+        if not isinstance(name, str) or not isinstance(decision, dict):
+            raise ValueError("market_gates entries must be named objects")
+        if not isinstance(decision.get("verdict"), str) or decision["verdict"] not in VERDICTS:
+            raise ValueError(f"market_gates.{name} requires PASS, FLAG or FAIL")
+        if decision["verdict"] != "PASS" and (not isinstance(decision.get("reason"), str)
+                                                   or not decision["reason"].strip()):
+            raise ValueError(f"market_gates.{name} needs a reason for FLAG or FAIL")
+    return value
+
+
+def local_job(path: Path) -> tuple[str, str, str, str]:
+    """Parse an intentionally saved full JD; never accept a search snippet."""
+    content = path.read_text(encoding="utf-8-sig")
+    header = re.search(r"^#\s+(.+?)\s+@\s+(.+?)\s*$", content, re.M)
+    if not header:
+        raise ValueError("expected first-level heading '# <Role> @ <Company>'")
+    title, company = (part.strip() for part in header.groups())
+    if not title or not company:
+        raise ValueError("role and company are required")
+    sections = re.split(r"^##\s+", content, flags=re.M)
+    parts = {section.split("\n", 1)[0].strip().lower(): section.partition("\n")[2].strip()
+             for section in sections[1:]}
+    pasted = parts.get("paste full jd below", "")
+    responsibilities = parts.get("responsibilities", "")
+    requirements = parts.get("requirements", "")
+    valid = (len(pasted) >= 160 or
+             (len(responsibilities) >= 40 and len(requirements) >= 40))
+    if not valid:
+        raise ValueError("full JD missing: paste >=160 characters under '## Paste Full JD Below', "
+                         "or provide substantial Responsibilities and Requirements sections")
+    url_match = re.search(r"^\*\*Source URL:\*\*\s*(https?://\S+)", content, re.M)
+    return title, company, url_match.group(1) if url_match else "", content
+
+
+def cmd_import_local(args) -> int:
+    """Promote complete China inbox files to canonical scraper state offline."""
+    inbox = args.inbox.resolve()
+    paths = args.file or sorted(inbox.glob("*.md"))
+    if not paths:
+        print(json.dumps({"imported": [], "unchanged": [], "errors": [], "written": False}))
+        return 0
+    if args.state.is_file():
+        doc, seen = load_state(args.state)
+    else:
+        doc = {"seen": {}}
+        seen = doc["seen"]
+    imported, unchanged, errors = [], [], []
+    for path in paths:
+        try:
+            resolved = path.resolve(strict=True)
+            if not resolved.is_relative_to(inbox) or path.suffix.lower() != ".md" or not resolved.is_file():
+                raise ValueError("file must be a Markdown file inside the China inbox")
+            title, company, url, content = local_job(resolved)
+            key = make_key(company, title, url)
+            # Preserve legacy keys and the portal source when a scrape already
+            # recorded the same posting. Never modify another market's record.
+            matches = [k for k, e in seen.items() if isinstance(e, dict) and e.get("market") == "china"
+                       and ((url and e.get("url") == url) or
+                            (norm(e.get("company")), norm(e.get("title"))) == (norm(company), norm(title)))]
+            if len(matches) > 1:
+                raise ValueError("ambiguous duplicate records: " + ", ".join(matches))
+            key = matches[0] if matches else key
+            if key in seen and seen[key].get("market") != "china":
+                raise ValueError(f"key {key} belongs to another market; cannot overwrite")
+            relative = resolved.relative_to(ROOT) if resolved.is_relative_to(ROOT) else resolved
+            digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+            existing = seen.get(key, {})
+            if existing.get("job_file_hash") == digest and existing.get("job_file") == str(relative):
+                unchanged.append({"key": key, "job_file": str(relative)})
+                continue
+            # Fresh local evidence reopens a previously ranked entry for triage;
+            # the stored deadline is still enforced when applying the new score.
+            seen[key] = {
+                **existing, "title": title, "company": company,
+                "url": url or existing.get("url") or "", "first_seen": existing.get("first_seen") or args.today.isoformat(),
+                "market": "china", "portal": existing.get("portal") or "manual",
+                "source": existing.get("source") or "local",
+                "status": "new", "fetch_status": "ready",
+                "job_file": str(relative), "job_file_hash": digest,
+            }
+            imported.append({"key": key, "job_file": str(relative)})
+        except (OSError, UnicodeError, ValueError) as exc:
+            errors.append({"file": str(path), "error": str(exc)})
+    if imported:
+        args.state.parent.mkdir(parents=True, exist_ok=True)
+        save_state(args.state, doc)
+    print(json.dumps({"market": args.market, "imported": imported,
+                      "unchanged": unchanged, "errors": errors,
+                      "written": bool(imported)}, indent=2, ensure_ascii=False))
+    return 1 if errors else 0
+
+
 def cmd_apply(args) -> int:
     doc, seen = load_state(args.state)
     today = args.today
@@ -294,8 +407,11 @@ def cmd_apply(args) -> int:
 
     rows, expired, errors = [], [], []
     for result in results:
+        if not isinstance(result, dict):
+            errors.append({"key": None, "error": "result must be an object"})
+            continue
         key = result.get("key")
-        entry = seen.get(key)
+        entry = seen.get(key) if isinstance(key, str) else None
         if entry is None:
             errors.append({"key": key, "error": "no such key in seen_jobs.json"})
             continue
@@ -314,15 +430,26 @@ def cmd_apply(args) -> int:
                 })
                 continue
 
-        if result.get("status") == "expired":
+        # A fresh deadline overrides the stored one; an absent deadline does
+        # not erase a known date. Never let even a high score revive a closed job.
+        fresh_deadline = result.get("deadline")
+        if fresh_deadline and parse_iso(fresh_deadline) is None:
+            errors.append({"key": key, "error": "fresh deadline must be YYYY-MM-DD"})
+            continue
+        deadline = fresh_deadline if fresh_deadline else entry.get("deadline")
+        if result.get("status") == "expired" or (parse_iso(deadline) or today) < today:
             entry["status"] = "expired"
+            if fresh_deadline:
+                entry["deadline"] = fresh_deadline
             expired.append(
-                {"key": key, "title": entry.get("title"), "company": entry.get("company"), "url": entry.get("url")}
+                {"key": key, "title": entry.get("title"), "company": entry.get("company"),
+                 "url": entry.get("url"), "deadline": entry.get("deadline")}
             )
             continue
 
         try:
             score = overall_score(result.get("scores") or {})
+            gates = checked_gates(result.get("market_gates"), args.market)
         except ValueError as exc:
             errors.append({"key": key, "error": str(exc)})
             continue
@@ -336,6 +463,7 @@ def cmd_apply(args) -> int:
         entry["rank_date"] = today.isoformat()
         entry["location_verdict"] = result.get("location_verdict") or legacy or "PASS"
         entry["language_gate"] = result.get("language_gate") or "PASS"
+        entry["market_gates"] = gates
         if entry["language_gate"] == "PASS":
             entry.pop("language_note", None)
         else:
@@ -363,6 +491,7 @@ def cmd_apply(args) -> int:
                 "location_verdict": entry["location_verdict"],
                 "language_gate": entry["language_gate"],
                 "language_note": entry.get("language_note"),
+                "market_gates": gates,
                 "deadline": entry.get("deadline"),
                 "posted_date": entry.get("posted_date"),
                 "urgent": bool(parsed and today <= parsed <= today + timedelta(days=URGENT_DAYS)),
@@ -375,7 +504,8 @@ def cmd_apply(args) -> int:
         save_state(args.state, doc)
 
     rows.sort(key=lambda r: (r["score"], r["urgent"]), reverse=True)
-    veto = lambda r: r["location_verdict"] == "FAIL" or r["language_gate"] == "FAIL"
+    veto = lambda r: (r["location_verdict"] == "FAIL" or r["language_gate"] == "FAIL"
+                      or any(g["verdict"] == "FAIL" for g in r["market_gates"].values()))
     vetoed = [r for r in rows if veto(r)]
     ranked = [r for r in rows if not veto(r)]
     print(
@@ -440,7 +570,14 @@ def main() -> int:
     app.add_argument("--dry-run", action="store_true")
     app.set_defaults(func=cmd_apply)
 
+    local = sub.add_parser("import-local", parents=[common], help="ingest full China inbox JDs offline")
+    local.add_argument("--inbox", type=Path, default=INBOX)
+    local.add_argument("--file", type=Path, action="append", help="one inbox Markdown file; repeat for multiple files")
+    local.set_defaults(func=cmd_import_local)
+
     args = ap.parse_args()
+    if args.command == "import-local" and args.market != "china":
+        ap.error("import-local requires --market china")
     return args.func(args)
 
 
