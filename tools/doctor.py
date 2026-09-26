@@ -44,22 +44,62 @@ def runtime_skill(agent, root):
     if not shutil.which("openclaw"):
         return report("FAIL", "OpenClaw discovery", "openclaw not on PATH")
     try:
-        result = subprocess.run(
-            ["openclaw", "skills", "list", "--agent", agent, "--json"],
-            cwd=root, capture_output=True, text=True, timeout=25, check=True,
-        )
-        data = json.loads(result.stdout)
-        entries = data if isinstance(data, list) else data.get("skills", [])
+        def query(*command):
+            result = subprocess.run(
+                ["openclaw", "skills", *command, "--agent", agent, "--json"],
+                cwd=root, capture_output=True, text=True, timeout=25, check=True,
+            )
+            return json.loads(result.stdout)
+
+        def runtime_path(value):
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError("runtime path missing")
+            path = Path(value).expanduser()
+            if not path.is_absolute():
+                raise ValueError("runtime path must be absolute")
+            return path.resolve(strict=True)
+
+        def available(skill):
+            # eligible does not include the per-agent allowlist in OpenClaw.
+            return (
+                skill.get("eligible") is True
+                and skill.get("enabled") is not False
+                and not any(skill.get(flag) is True for flag in (
+                    "disabled", "blockedByAllowlist", "blockedByAgentFilter",
+                ))
+            )
+
+        checkout = root.resolve(strict=True)
+        data = query("list")
+        if not isinstance(data, dict) or not data.get("workspaceDir"):
+            return report("FAIL", "OpenClaw discovery", "runtime did not report workspaceDir; cannot verify isolation")
+        if runtime_path(data["workspaceDir"]) != checkout:
+            return report("FAIL", "OpenClaw discovery", f"agent {agent} workspace does not match this checkout; check --agent ID and its workspace setting")
+        entries = data.get("skills", [])
         if not isinstance(entries, list):
             raise ValueError("skills list returned an unexpected JSON shape")
         matches = [item for item in entries if isinstance(item, dict) and item.get("name") == "job-search"]
-        if not matches:
-            return report("FAIL", "OpenClaw discovery", f"agent {agent} does not list job-search; check its workspace")
+        if len(matches) != 1:
+            return report("FAIL", "OpenClaw discovery", f"agent {agent} must list exactly one job-search skill; check its workspace")
         skill = matches[0]
-        if skill.get("eligible") is False or skill.get("enabled") is False:
+        if not available(skill):
             return report("FAIL", "OpenClaw discovery", f"job-search is unavailable to agent {agent}")
-        return report("OK", "OpenClaw discovery", f"agent {agent} lists job-search")
-    except (OSError, ValueError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+
+        # `skills list --json` omits filePath. The detail query verifies that
+        # the selected skill is this checkout's entry point, not a same-named
+        # global skill or a symlink into the other candidate's checkout.
+        detail = query("info", "job-search")
+        if not isinstance(detail, dict) or detail.get("name") != "job-search":
+            raise ValueError("unexpected skill detail")
+        if not available(detail):
+            return report("FAIL", "OpenClaw discovery", f"job-search is unavailable to agent {agent}")
+        expected = (checkout / "skills/job-search/SKILL.md").resolve(strict=True)
+        if not expected.is_relative_to(checkout) or not expected.is_file():
+            return report("FAIL", "OpenClaw discovery", "local job-search entry point must be a file inside this checkout")
+        if runtime_path(detail.get("filePath")) != expected:
+            return report("FAIL", "OpenClaw discovery", "job-search resolves outside this checkout's entry point; check skill overrides")
+        return report("OK", "OpenClaw discovery", f"agent {agent} workspace and job-search path match this checkout")
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
         # Don't print command output: OpenClaw may include personal workspace paths.
         return report("FAIL", "OpenClaw discovery", f"unable to query agent {agent} ({type(exc).__name__})")
 

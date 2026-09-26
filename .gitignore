@@ -54,6 +54,22 @@ Thumbs.db
 # Memory files (Claude Code user-specific)
 .claude/projects/
 
+# OpenClaw workspace state and personal bootstrap/memory files. Root AGENTS.md
+# stays tracked and candidate-neutral; put personal preferences in USER.md or
+# documents/profile/, never in the tracked framework instructions.
+/USER.md
+/MEMORY.md
+/memory.md
+/memory/
+/SOUL.md
+/IDENTITY.md
+/TOOLS.md
+/HEARTBEAT.md
+/BOOT.md
+/BOOTSTRAP.md
+/DREAMS.md
+/.openclaw/
+
 # Skills lock (auto-generated)
 skills-lock.json
 

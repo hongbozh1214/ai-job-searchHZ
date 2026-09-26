@@ -66,6 +66,20 @@ ALLOWED_PERMISSIONS = {
 REQUIRED_IGNORE_RULES = [
     "salary_data.json",
     "company_pages.json",
+    # OpenClaw runs directly in the checkout; these files can contain personal
+    # context even when documents/profile/ is correctly kept out of git.
+    "/USER.md",
+    "/MEMORY.md",
+    "/memory.md",
+    "/memory/",
+    "/SOUL.md",
+    "/IDENTITY.md",
+    "/TOOLS.md",
+    "/HEARTBEAT.md",
+    "/BOOT.md",
+    "/BOOTSTRAP.md",
+    "/DREAMS.md",
+    "/.openclaw/",
     # Depth-independent: the job-scraper skill resolves `job_scraper/` relative
     # to its own directory, so the state file lands under .claude/skills/... and
     # a repo-rooted rule silently fails to match it.

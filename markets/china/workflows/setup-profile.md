@@ -19,17 +19,23 @@ with the user as such, do not silently mutate the template.
 
 ## Step 1: Initialize Personal Copies (First Run)
 
-If `documents/china/profile/candidate.md` does not exist yet, seed the personal
-copies from the templates:
+Check each personal file independently and initialize only missing files. A
+partial setup may already contain preferences or evidence even when
+`candidate.md` is missing. Preserve every existing file, including empty files;
+review gaps with the user later rather than replacing their files with templates.
 
 ```bash
 mkdir -p documents/china/profile
-cp markets/china/profile/candidate.md   documents/china/profile/candidate.md
-cp markets/china/profile/preferences.md documents/china/profile/preferences.md
-cp markets/china/profile/evidence.md    documents/china/profile/evidence.md
+for name in candidate.md preferences.md evidence.md; do
+  target="documents/china/profile/$name"
+  if [ ! -e "$target" ] && [ ! -L "$target" ]; then
+    cp -n "markets/china/profile/$name" "$target"
+  fi
+done
 ```
 
-If the personal copies already exist, skip the `cp` step.
+If all personal copies already exist, this block makes no changes. Do not
+replace it with a bulk copy gated only on `candidate.md`.
 
 ## Step 2: Read Current State
 
