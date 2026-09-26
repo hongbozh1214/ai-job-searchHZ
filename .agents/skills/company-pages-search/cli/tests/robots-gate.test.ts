@@ -228,7 +228,8 @@ describe("htmlFetch escalation on 403", () => {
       },
       curl: async (u, g) => ((await g(u)) ? "<html>ok</html>" : ""),
     });
-    expect(seen).toEqual(["https://example.com/careers/geneva"]);
+    // The 403 decision and curl itself both consult the same gate.
+    expect(seen).toEqual(["https://example.com/careers/geneva", "https://example.com/careers/geneva"]);
   });
 });
 
