@@ -131,7 +131,19 @@ claims.*
 - **Engage nice-to-haves by name** where the profile supports honest adjacency (e.g. "conceptually aligned with <named tool>"), and use the posting's own term over a synonym wherever it is truthfully applicable - including in CV section headings (a posting hiring for "MLOps" should find a heading containing "MLOps", not only a paraphrase).
 - **Address stated logistics and prerequisites** in the cover letter where the posting raises them: security clearance willingness, start date or availability, commute or location fit, and the posting's reference/job ID where one exists. When the employer operates across several countries, a truthful language-capabilities sentence mapped to their footprint is high-value targeting.
 
-*In both filenames below, `<company>_<role>` is derived by the **Subfolder naming** rule in `documents/README.md` — the same rule `/outcome` Step 1.4 uses for the archive folder, so a `/` or other path character in a company or role name can never split the filename across directories.*
+*In both filenames below, `<company>_<role>` means the selected file slug,
+also used for the archive by the same rule `/outcome` Step 1.4 uses. Derive the ordinary slug by the **Subfolder naming**
+rule in `documents/README.md`. Before drafting, inspect tracker rows for the
+same company and role and the ordinary archive's `job_posting.md`. If a row for
+this exact source URL already has `posting_key:<slug>` in its notes, reuse that
+slug. If another posting occupies the ordinary slug with a different known
+source URL, use `python3 tools/job_key.py --company "<company>" --title "<role>"
+--url "<source URL>" --collision` to make a stable distinct slug; append
+`posting_key:<slug>` to this posting's tracker notes. Use the selected slug for
+**all** generated CV, cover letter, PDF/text and archive paths in this command.
+When the source URL is absent or an existing archive's identity cannot be
+verified, ask which posting is intended before writing; never reuse a sibling
+posting's materials by guessing. The same rule applies to a refreshed draft.*
 
 ### CV (`cv/main_<company>_<role><CV_EXT>`)
 - In the **CV language from the profile** (the `CV language:` line in
@@ -432,7 +444,11 @@ Do this before the optional offer below, and before ending the turn for any othe
    date,company,sector,role,role_type,channel,status,contact_person,fit_rating,notes,cv_file,cover_letter_file,source,deadline
    ```
    **If the file exists and its header does not end in `,deadline`, append `,deadline` to the header line only** - no data row is touched. Legacy rows then read as an empty deadline.
-2. Match existing rows case-insensitively on company and role; if both the new and existing source URLs are known and differ, treat them as distinct postings (China also uses the posting-specific slug in its overlay). **On no match, or when every match holds a final status, append a new row. On a match that is still open, update it.** "Final" and "open" are defined by the **Tracker status vocabulary** in `/outcome` — the legacy space spellings `no response` / `offer declined` count as final, so a closed application never gets its row overwritten. When you append alongside a final row, say so — the earlier application to that role keeps its own row and its own outcome.
+2. Match existing rows by source URL first; compare company and role only when URL is unavailable and the match is unambiguous. If both the new and existing source URLs are known and differ, treat them as distinct postings (China also uses the posting-specific slug in its overlay). **On no match, or when every match for this same posting holds a final status, append a new row. On a match for this same posting that is still open, update it.** "Final" and "open" are defined by the **Tracker status vocabulary** in `/outcome` — the legacy space spellings `no response` / `offer declined` count as final, so a closed application never gets its row overwritten. When you append alongside a final row, say so — the earlier application to that role keeps its own row and its own outcome.
+   Confirm the selected file slug from Step 2 before updating any row. For a
+   distinct URL, never reuse another row's `cv_file`, `cover_letter_file`,
+   `posting_key` marker, or archived posting. With an ambiguous missing URL,
+   ask instead of matching by company/role alone.
 3. Values for a new row:
 
    | Column | Value |
@@ -447,9 +463,12 @@ Do this before the optional offer below, and before ending the turn for any othe
    | `deadline` | the application deadline extracted in Step 0, as `YYYY-MM-DD`, empty when the posting states none. Never guess one from "apply soon" or from the posting date, and never carry a deadline over from a different posting |
 
 4. **Updating an open row: never move it backwards.** Refresh `cv_file`, `cover_letter_file`, `fit_rating`, `source` and `deadline` (leave an existing deadline alone when this run extracted none - absence is not a correction), and append an undated `redrafted` marker to `notes` (undated deliberately — `/outcome` reads the latest *dated* note as the last contact with the employer, and re-drafting a CV is not that). Leave `status` alone, and leave `date` alone unless the status is still `drafted`, in which case it becomes today.
+   Preserve any existing `posting_key:<slug>` marker. Add the selected marker
+   when a different known URL requires a distinct archive; include it on a new
+   row as well. The marker contains no commas, quotes, or newlines.
 5. Never restructure the CSV, reorder rows, or touch other rows.
 6. **Do not modify `job_scraper/seen_jobs.json`.** Dedup runs off the tracker instead: `/rank` builds its exclusion set from company+role there regardless of status.
-7. **Archive the posting now.** Write the posting text you are holding from Step 0, verbatim and never a fresh fetch, to `documents/applications/<company>_<role>/job_posting.md`, creating the folder if absent. Derive `<company>_<role>` from the `company` and `role` values this tracker row ends up holding, by the same rule `/outcome` Step 1.4 uses. **If the file already exists, leave it** - the archived copy is what was actually submitted (a re-application to the same company and role collides here and keeps the older posting, as it does in `/outcome` today). **If you no longer hold the posting text, write nothing** - say so in the report and never reconstruct it from memory; `/outcome` Step 3.2 archives it later.
+7. **Archive the posting now.** Write the posting text you are holding from Step 0, verbatim and never a fresh fetch, to `documents/applications/<company>_<role>/job_posting.md`, creating the folder if absent. `<company>_<role>` is the selected slug from Step 2 and `/outcome` Step 1.4 follows its tracker `posting_key` marker when one exists. **If the file already exists, leave it** only after confirming its recorded source URL identifies this same posting; otherwise choose the distinct URL slug before writing. A closed application to the same URL keeps the older posting and archive; ask whether to reuse its history or create a new dated archive before recording a reapplication. **If you no longer hold the posting text, write nothing** - say so in the report and never reconstruct it from memory; `/outcome` Step 3.2 archives it later.
 
 Name the tracker row in the "Files Created" report above, and the archived posting - saying explicitly when an existing `job_posting.md` was left in place rather than written.
 

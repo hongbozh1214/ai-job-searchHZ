@@ -6,4 +6,4 @@
 4. Verify the employer posting for every shortlisted aggregator result.
 5. Record source, canonical URL, country, location/remote status, posting language, required languages, authorization/sponsorship wording, contract type, deadline, and salary as stated.
 6. Deduplicate and apply hard gates before fit scoring.
-7. Save results under `markets/europe/jobs/`, write `"market": "europe"` on every corresponding `job_scraper/seen_jobs.json` entry, and report sources that were blocked or incomplete. Never omit or infer this field: `/rank --market europe` uses it as the state-isolation boundary.
+7. Save new full JDs under `markets/europe/jobs/inbox/` and evaluation reports under `markets/europe/jobs/evaluated/`; archive older files under `markets/europe/jobs/archived/`. These and any files directly beneath `jobs/` are gitignored personal data. Write `"market": "europe"` on every corresponding `job_scraper/seen_jobs.json` entry, and report sources that were blocked or incomplete. Never omit or infer this field: `/rank --market europe` uses it as the state-isolation boundary.

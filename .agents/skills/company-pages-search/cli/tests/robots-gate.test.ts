@@ -165,6 +165,25 @@ describe("htmlFetch identifies honestly by default", () => {
 });
 
 describe("htmlFetch escalation on 403", () => {
+  test("a curl retry retains the gate for a redirected destination", async () => {
+    const first = "https://allowed.example/careers";
+    const next = "https://denied.example/jobs";
+    const checked: string[] = [];
+    const { impl } = recordingFetch([stubResponse(403)]);
+    await expect(htmlFetch(first, {
+      fetchImpl: impl,
+      gate: async (url) => {
+        checked.push(url);
+        return url === first;
+      },
+      // Offline stand-in for curlFallback after an HTTP redirect.
+      curl: async (_url, gate) => {
+        expect(await gate(next)).toBe(false);
+        return "";
+      },
+    })).rejects.toThrow(/bot_blocked/);
+    expect(checked).toEqual([first, next]);
+  });
   test("403 with a permitting gate returns the curl body", async () => {
     const { impl } = recordingFetch([stubResponse(403)]);
     const body = await htmlFetch("https://example.com/jobs", {

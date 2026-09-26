@@ -46,10 +46,12 @@ def private_paths(root):
         "documents/applications", "documents/postings", "job_scraper",
         ".claude/skills/job-scraper/job_scraper", "company_research",
         "job_search_tracker.csv", "company_pages.json", "USER.md", "MEMORY.md",
-        "memory", "memory.md", "gmail_sync", "reports",
+        "memory", "memory.md", ".openclaw", "gmail_sync", "reports",
     ]
     scan_paths = ["documents/profile", "documents/cv", "documents/applications",
-                  "documents/postings", "documents/linkedin", "job_scraper", "company_research"]
+                  "documents/postings", "documents/linkedin", "job_scraper",
+                  ".claude/skills/job-scraper/job_scraper", "company_research",
+                  "memory", ".openclaw", "gmail_sync", "reports"]
     for market in ("china", "europe", "finland"):
         paths.extend((f"documents/{market}/profile", f"markets/{market}/jobs"))
         scan_paths.extend((f"documents/{market}/profile", f"markets/{market}/jobs"))
@@ -185,6 +187,11 @@ def registry(root):
                 raise ValueError("each entry needs name, careers_url and ats strings")
             if entry["ats"] not in ("greenhouse", "lever", "smartrecruiters", "oracle", "generic"):
                 raise ValueError("unsupported ats value")
+            if entry["ats"] != "generic" and (not isinstance(entry.get("ats_id"), str) or not entry["ats_id"].strip()):
+                raise ValueError("non-generic ATS entries require a nonempty ats_id")
+            if entry["ats"] == "oracle" and (len(entry["ats_id"].split("|")) != 2 or
+                                              not all(part.strip() for part in entry["ats_id"].split("|"))):
+                raise ValueError("Oracle ats_id requires host|siteNumber")
             if "example.com" in entry["careers_url"] or entry["name"].startswith("Example "):
                 raise ValueError("example employer still present")
         report("OK", "company registry", f"{len(entries)} employer(s) in personal registry")

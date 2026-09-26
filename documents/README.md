@@ -180,6 +180,13 @@ underscores are trimmed. If the derived name is empty, stop and ask the user for
 role containing at least one letter or digit; do not create a file or directory. Every non-empty
 result is therefore a single path component whatever the posting contains.
 
+For a second posting with the same company and role but a distinct known source URL,
+keep the existing folder and give the new posting a URL-suffixed slug using
+`python3 tools/job_key.py --company "<company>" --title "<role>" --url "<source>" --collision`.
+Store `posting_key:<slug>` in that tracker row's notes and reuse this slug for
+draft filenames and the archive. Existing China rows use `china_posting_key:<slug>`.
+If a source URL is missing and the match is ambiguous, ask before creating an archive.
+
 Examples:
 ```
 applications/

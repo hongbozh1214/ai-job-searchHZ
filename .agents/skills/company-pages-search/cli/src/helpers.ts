@@ -350,7 +350,9 @@ export async function htmlFetch(url: string, deps: FetchDeps = {}): Promise<stri
             `[robots_unconfirmed] (robots.txt does not permit this path, or could not be read)`,
         )
       }
-      const viaCurl = await curl(url, async () => true)
+      // The curl fallback checks every redirect hop with the same robots gate.
+      // Passing an always-true gate here would permit an unrelated destination.
+      const viaCurl = await curl(url, gate)
       if (viaCurl) return viaCurl
       throw new Error(
         `Request failed: ${response.status} ${response.statusText} ` +

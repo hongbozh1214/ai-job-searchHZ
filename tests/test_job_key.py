@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
-from job_key import is_canonical, is_legacy_shape, make_key, slugify  # noqa: E402
+from job_key import is_canonical, is_legacy_shape, make_key, make_url_collision_key, slugify  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 TOOL = REPO / "tools" / "job_key.py"
@@ -35,6 +35,12 @@ class Slugify(unittest.TestCase):
 
 
 class MakeKey(unittest.TestCase):
+    def test_same_role_distinct_urls_get_stable_safe_collision_key(self):
+        a, b = "https://example.com/jobs/100", "https://example.com/jobs/200"
+        self.assertEqual(make_key("Acme", "Engineer", a), make_key("Acme", "Engineer", b))
+        self.assertNotEqual(make_url_collision_key("Acme", "Engineer", a),
+                            make_url_collision_key("Acme", "Engineer", b))
+        self.assertTrue(is_canonical(make_url_collision_key("Acme", "Engineer", a)))
     def test_shape(self):
         key = make_key("Acme Corp", "SOC Analyst (L2)")
         self.assertEqual(key, "acme-corp_soc-analyst-l2")
@@ -72,6 +78,15 @@ class MakeKey(unittest.TestCase):
 
 
 class CompanyFallbackCLI(unittest.TestCase):
+    def test_collision_cli_requires_url_and_produces_stable_different_key(self):
+        common = [sys.executable, str(TOOL), "--company", "Acme", "--title", "Engineer", "--collision"]
+        missing = subprocess.run(common, capture_output=True, text=True)
+        self.assertNotEqual(missing.returncode, 0)
+        first = subprocess.run(common + ["--url", "https://example.com/a"], capture_output=True, text=True, check=True)
+        second = subprocess.run(common + ["--url", "https://example.com/b"], capture_output=True, text=True, check=True)
+        self.assertNotEqual(first.stdout, second.stdout)
+        self.assertTrue(is_canonical(first.stdout.strip()))
+
     def key_for(self, company, url="https://example.com/jobs/123456"):
         proc = subprocess.run(
             [sys.executable, str(TOOL), "--company", company,

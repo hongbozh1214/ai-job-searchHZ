@@ -434,8 +434,9 @@ To wipe your profile data and start fresh:
 ```
 
 `/reset` shows the files to remove and requires an exact `RESET` confirmation.
-In OpenClaw, inspect the same full-reset preview with `python3 tools/reset_state.py`
-in the candidate checkout; the script deletes only after `--execute --confirm RESET`.
+In OpenClaw, inspect the same full-reset preview with `python3 tools/reset_state.py --scope full`
+in the candidate checkout. To execute that exact preview, pass
+`--scope full --execute --confirm RESET --expected-digest <digest-from-preview>`.
 The full reset preserves tracked templates and `.env` secrets. It does not erase
 external provider data, backups or browser sessions.
 

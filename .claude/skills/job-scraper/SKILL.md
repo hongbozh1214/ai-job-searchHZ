@@ -39,7 +39,7 @@ Optional arguments:
 ### Step 0: Load State
 
 1. Read `job_scraper/seen_jobs.json` (create if missing - start with `{"seen": {}}`)
-2. Read `job_search_tracker.csv` to extract already-applied companies+roles
+2. Read `job_search_tracker.csv` to extract already-applied source URLs and company+role pairs for ambiguous URL-less postings
 3. Read `documents/profile/search-queries.md` for the local search strategy. Use
    `.claude/skills/job-scraper/search-queries.md` for query rules and examples.
    If the local strategy is missing, ask the user to run setup; initialize it
@@ -128,8 +128,14 @@ For every candidate:
 - Skip if the URL matches any existing `seen_jobs.json` entry, regardless of
   that entry's key. This preserves dedup continuity for postings stored under
   the pre-helper key rule while new entries use the canonical key from Step 4.
-- Otherwise, skip if the company+title combo already exists in `seen_jobs.json`
-- Skip if the company+role already appears in `job_search_tracker.csv`
+- For a matching company+title in `seen_jobs.json`, skip only when the source
+  URLs are the same or the new result has no URL and cannot be disambiguated.
+  Different known URLs are distinct postings; verify a shared requisition ID or
+  canonical employer URL before deciding that two URLs represent one job.
+- For a matching company+role in `job_search_tracker.csv`, skip only when its
+  `source` URL matches (ignoring a trailing slash), or when a missing URL makes
+  the posting ambiguous. Different known URLs must not be dropped. Report
+  ambiguous no-URL results for manual review rather than overwriting either.
 
 ### Step 2.5: Mass-Posting Detection (within this run)
 
@@ -166,6 +172,12 @@ python3 tools/job_key.py --company "<company>" --title "<title>" --url "<url>"
 
 It prints one line: the canonical key for that posting. The key must be a pure function of the posting, because two runs that slugify differently store the same job twice and defeat the dedup this step exists to provide. The helper also length-caps long titles and disambiguates the cap with a hash of the full slug, so a truncated title is stable across runs and two different long titles never collide. `python3 tools/job_key.py --audit` reports entries in an existing state file that predate this rule; it only reports, and never rewrites keys, since a rewritten key breaks the tracker's own company+role matching.
 
+If this key already belongs to a different known URL, keep the old entry intact
+and rerun the helper with `--collision` and the new URL. The output appends a
+stable URL suffix. Use that key to store and rank the second posting. If either
+URL is missing, require manual disambiguation instead of silently replacing the
+old entry. Deduplicate against actual URLs before generating a collision key.
+
 2. Add ALL fetched jobs (new and skipped) to `seen_jobs.json` with structure:
 ```json
 {
@@ -199,8 +211,7 @@ The `market` field is the explicit market selected for this scrape: `china`, `eu
 
 `posted_date` is the posting's own publication date, taken from the `date` field Step 2's contract already guarantees on every portal CLI's search output. Step 1b uses that date to scope the run to the last 14 days and then drops it, so nothing downstream can distinguish a posting published yesterday from one published two years ago - `first_seen` is when this scraper first saw the entry, not when the employer posted it. Persisting it makes Step 1b's window auditable after the run and gives `/rank` a freshness signal to weigh, instead of rediscovering the date and recording it in prose that nothing reads. That gap landed for real: a freehire-search posting dated 2024-05-13 was scraped and ranked Strong Fit at position 1 of 133, its own scoring note observing the listing "may be long stale" with nothing able to act on it. `null` means the portal returned no date for that result (the CLIs emit `date: null` when a listing omits it); a missing key means the entry predates this field - **never infer a posting date** from either, and never backfill by guessing.
 
-3. Only present jobs NOT already in the seen list (matched by URL or
-   company+title) or tracker.
+3. Only present postings not already in the seen list or tracker by exact URL; for URL-less postings with matching company+title, ask before presenting as new.
 
 ### Step 4.5: Generate Referral Contact Links (High & Medium Fit Only)
 

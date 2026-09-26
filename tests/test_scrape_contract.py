@@ -161,7 +161,8 @@ class SeenJobsDedupContinuityTests(unittest.TestCase):
 
     def test_step4_presentation_mentions_url_deduplication(self):
         text = SCRAPER_SKILL.read_text(encoding="utf-8")
-        self.assertRegex(text, r"matched by URL or\s+company\+title")
+        self.assertIn("Different known URLs are distinct postings", text)
+        self.assertIn("not already in the seen list or tracker by exact URL", text)
 
 
 if __name__ == "__main__":

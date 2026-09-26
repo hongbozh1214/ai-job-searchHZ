@@ -27,6 +27,12 @@ class DoctorTests(unittest.TestCase):
                 self.assertTrue(doctor.registry(root))
                 path.write_text(json.dumps([{"name": "Acme", "careers_url": "https://careers.acme.test", "ats": "generic"}]), encoding="utf-8")
                 self.assertFalse(doctor.registry(root))
+                path.write_text(json.dumps([{"name": "Acme", "careers_url": "https://careers.acme.test", "ats": "greenhouse"}]), encoding="utf-8")
+                self.assertTrue(doctor.registry(root))
+                path.write_text(json.dumps([{"name": "Acme", "careers_url": "https://careers.acme.test", "ats": "greenhouse", "ats_id": "acme"}]), encoding="utf-8")
+                self.assertFalse(doctor.registry(root))
+                path.write_text(json.dumps([{"name": "Acme", "careers_url": "https://careers.acme.test", "ats": "oracle", "ats_id": "missing-site"}]), encoding="utf-8")
+                self.assertTrue(doctor.registry(root))
 
     def test_registry_cannot_point_to_another_candidates_checkout(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -56,6 +62,15 @@ class DoctorTests(unittest.TestCase):
             self.assertTrue(doctor.private_paths(root))
             (root / "documents" / "profile" / "candidate.md").unlink()
             self.assertFalse(doctor.private_paths(root))
+
+    def test_memory_symlink_to_other_checkout_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root, other = base / "candidate-1", base / "candidate-2"
+            (root / "memory").mkdir(parents=True)
+            other.mkdir()
+            (root / "memory" / "other").symlink_to(other, target_is_directory=True)
+            self.assertTrue(doctor.private_paths(root))
 
     def test_pdf_and_font_checks_only_warn_when_unavailable(self):
         output = io.StringIO()

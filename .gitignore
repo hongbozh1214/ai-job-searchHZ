@@ -133,6 +133,8 @@ upskill/*.md
 **/upskill/report-*.md
 
 # Market-specific job descriptions and generated outputs are personal.
+# Include files written directly beneath jobs/ as well as known stages.
+markets/*/jobs/**
 markets/*/jobs/inbox/**
 markets/*/jobs/evaluated/**
 markets/*/jobs/archived/**

@@ -36,7 +36,7 @@ skill directory are methodology and blank templates, never candidate evidence.
 - Ask the user if they want to proceed with an application
 
 ### Step 2: Tailor CV
-- Before writing either document, derive `<company>_<role>` once by the **Subfolder naming** rule in `documents/README.md`; reuse that exact value for the CV, cover letter, and Step 3b archive path. If the rule says to stop because the derived name is empty, stop before creating any file.
+- Before writing either document, choose one application slug by `/apply` Step 2: derive the ordinary slug by the **Subfolder naming** rule in `documents/README.md`; reuse the tracker row’s `posting_key:<slug>` for the same source URL, or use `python3 tools/job_key.py --collision` for a distinct URL when that slug is occupied. Reuse the chosen slug for the CV, cover letter, tracker marker, and Step 3b archive path. If existing applications make a missing URL ambiguous, ask before writing. If the rule says to stop because the derived name is empty, stop before creating any file.
 - Use `documents/profile/cv/main_example.tex` as the factual master CV and read
   only a role-specific file under `cv/` for structure when one already exists
 - Follow the methodology and active template in tracked `05-cv-templates.md`,

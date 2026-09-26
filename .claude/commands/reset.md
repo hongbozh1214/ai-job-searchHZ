@@ -31,9 +31,15 @@ If no recognized scope is supplied, ask:
 
 ## Step 1: Show exactly what will be cleared
 
+From the current checkout run `python3 tools/reset_state.py --scope <scope>`,
+where `<scope>` is the chosen `profile`, `documents`, `all`, or `full`.
+Show the exact `files` and `preserved` lists and the `digest` from this preview.
+If `preserved` is nonempty, explain why those files cannot be safely deleted;
+the command will refuse a partial reset. Do not read or print file contents.
+
 ### If scope includes `profile`:
 
-For `profile`, inspect and list these files (or mark each as missing/empty):
+For `profile`, the preview covers these files when present:
 
 - `documents/profile/CLAUDE.md`
 - `documents/profile/01-candidate-profile.md`
@@ -48,9 +54,9 @@ For `profile`, inspect and list these files (or mark each as missing/empty):
 - `documents/profile/legacy-backup/` (if a prior local profile was compacted,
   this contains the original personal files and will also be deleted)
 
-Explain that all personal files under `documents/profile/`, including any
-additional notes and legacy backups, are cleared. List any additional files found
-there before asking for confirmation.
+Explain that all gitignored personal files under `documents/profile/`, including
+additional notes and legacy backups, are cleared. Include any additional files
+found by the preview before asking for confirmation.
 
 The following files are NOT touched (they contain framework rules and templates):
 
@@ -64,21 +70,20 @@ They must not be edited or reset by this command.
 
 ### If scope includes `documents`:
 
-For `documents`, list files in `documents/cv/`, `documents/linkedin/`,
+For `documents`, preview files in `documents/cv/`, `documents/linkedin/`,
 `documents/diplomas/`, `documents/references/`, `documents/projects/`,
 `documents/postings/`, and `documents/applications/`. Do not list or delete
 `documents/README.md` or `.gitkeep` files.
 
 ### If scope is `full`:
 
-Run `python3 tools/reset_state.py` from the current checkout and show its
-`files` list and `preserved` list in full before requesting confirmation. This
+Use the `full` scope preview and show its `files` and `preserved` lists. This
 includes `documents/profile/`, `documents/<market>/profile/`, source documents,
 `markets/<market>/jobs/{inbox,evaluated,archived}/`, scraper `seen_jobs.json`,
 `job_search_tracker.csv`, `company_pages.json`, application and generated CV/letter
 outputs, reports and OpenClaw workspace memory. The script refuses to clear
 tracked or non-ignored files. `.gitkeep` files and tracked examples remain.
-`--full`/`full` never applies to another candidate's checkout. Tell the user
+`full` never applies to another candidate's checkout. Tell the user
 that external services (such as Notion and the model provider), browser sessions,
 and backups remain outside this checkout; `.env` secrets are deliberately not
 cleared. If `COMPANY_PAGES_REGISTRY` points outside this checkout, that file is
@@ -97,44 +102,15 @@ was changed.”
 
 ## Step 3: Execute the reset
 
-### Profile reset
-
-For `profile`, delete the contents of the local profile directory but preserve its
-directory marker:
-
-This clears `CLAUDE.md`, `01-candidate-profile.md`, `02-behavioral-profile.md`,
-`03-writing-style.md`, `04-job-evaluation.md`, `05-cv-templates.md`,
-`06-cover-letter-templates.md`, `07-interview-prep.md`, `search-queries.md`, and
-`cv/main_example.tex` within `documents/profile/`, as well as any
-`legacy-backup/` created during compaction.
+After showing the preview and receiving the exact confirmation, run:
 
 ```bash
-find documents/profile -type f ! -name .gitkeep -delete
+python3 tools/reset_state.py --scope <scope> --execute --confirm RESET --expected-digest <preview-digest>
 ```
 
-### Documents reset
-
-For `documents`, delete only user-provided source and application files:
-
-```bash
-rm -f documents/cv/*
-rm -f documents/linkedin/*
-rm -f documents/diplomas/*
-rm -f documents/references/*
-rm -f documents/projects/*
-rm -f documents/postings/*
-rm -rf documents/applications/*/
-```
-
-### Full reset
-
-After showing the current preview and receiving the exact confirmation, run:
-
-```bash
-python3 tools/reset_state.py --execute --confirm RESET
-```
-
-If the preview changes, a file is preserved unexpectedly, or the script fails,
+Substitute only the scope and digest shown in Step 1. The script will refuse
+to run if files changed since that preview or any unignored/tracked file would
+remain. It never follows directory links into another workspace. If the script fails,
 stop and report what remains. Do not improvise a recursive delete.
 
 Do not run `git restore`, `git checkout`, or any command that rewrites tracked

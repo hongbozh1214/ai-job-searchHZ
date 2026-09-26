@@ -198,6 +198,7 @@ def main() -> int:
     ap.add_argument("--company")
     ap.add_argument("--title")
     ap.add_argument("--url", default="")
+    ap.add_argument("--collision", action="store_true", help="add a stable URL suffix when a distinct posting occupies the ordinary key")
     ap.add_argument("--audit", nargs="?", const=str(STATE), metavar="STATE_JSON")
     args = ap.parse_args()
 
@@ -205,7 +206,10 @@ def main() -> int:
         return audit(Path(args.audit))
     if args.company is None or args.title is None:
         ap.error("give --company and --title, or --audit")
-    print(make_key(args.company, args.title, args.url))
+    if args.collision and not args.url:
+        ap.error("--collision requires --url")
+    print(make_url_collision_key(args.company, args.title, args.url) if args.collision
+          else make_key(args.company, args.title, args.url))
     return 0
 
 

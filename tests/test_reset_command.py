@@ -21,6 +21,8 @@ tree, the profile files from /setup Step 3's own headings - so a new drop
 folder or a new /setup target fails this test until /reset covers it.
 """
 import re
+
+from tools import reset_state
 import subprocess
 import unittest
 from pathlib import Path
@@ -57,32 +59,16 @@ class TestResetCoversEveryDocumentsSubfolder(unittest.TestCase):
         # or the assertions below would pass vacuously.
         self.assertGreaterEqual(len(self.folders), 5, self.folders)
 
-    def test_preview_lists_every_subfolder(self):
-        missing = [
-            f for f in sorted(self.folders) if f"documents/{f}/" not in self.text
-        ]
-        self.assertEqual(
-            missing,
-            [],
-            "reset.md's preview never mentions these documents/ subfolders, "
-            f"so the user confirms a deletion list that omits them: {missing}",
-        )
+    def test_documents_scope_covers_tracked_document_subfolders(self):
+        configured = {Path(name).parts[1] for name in reset_state.DOCUMENT_DIRS}
+        self.assertFalse(self.folders - configured)
+        self.assertIn("--scope <scope>", self.text)
+        self.assertIn("--expected-digest", self.text)
 
-    def test_delete_block_removes_every_subfolder(self):
-        deleted = set(re.findall(r"rm -r?f documents/(\w+)/", self.text))
-        missing = sorted(self.folders - deleted)
-        self.assertEqual(
-            missing,
-            [],
-            "reset.md's delete block has no rm line for these documents/ "
-            'subfolders, yet the command then claims "The `documents/` '
-            f'folder is now empty.": {missing}',
-        )
-
-    def test_documents_scope_does_not_delete_the_local_profile(self):
-        execution = section(self.text, "### Documents reset", "## Step 4:")
-        self.assertNotIn("rm -f documents/profile/", execution)
-        self.assertNotIn("rm -rf documents/profile/", execution)
+    def test_documents_scope_excludes_profile_and_shell_globs(self):
+        self.assertNotIn("documents/profile", reset_state.DOCUMENT_DIRS)
+        self.assertNotIn("rm -rf", self.text)
+        self.assertNotIn("find documents/", self.text)
 
 
 def section(text: str, start: str, end: str) -> str:
@@ -128,16 +114,10 @@ class TestResetCoversEveryPersonalizedSkillFile(unittest.TestCase):
             f"a list that omits them: {missing}",
         )
 
-    def test_execution_clears_every_personalized_skill_file(self):
-        execution = section(self.text, "### Profile reset", "### Documents reset")
-        missing = sorted(f for f in self.files if f not in execution)
-        self.assertEqual(
-            missing,
-            [],
-            "reset.md's Step 3 profile pass has no instruction for these files, "
-            'yet the command then reports the skill files are "now blank": '
-            f"{missing}",
-        )
+    def test_profile_scope_inventories_complete_profile_tree(self):
+        source = __import__("inspect").getsource(reset_state.inventory)
+        self.assertIn('collect(root / "documents/profile")', source)
+        self.assertIn('scope in ("profile", "all", "full")', source)
 
     def test_preserved_list_claims_no_personalized_file_is_framework_only(self):
         """A file /setup personalizes must never be listed as framework-only.
