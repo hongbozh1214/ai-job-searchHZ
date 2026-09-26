@@ -19,6 +19,7 @@ description: >
   ansøgningsfrist, søg efter job, full time job denmark, part time job denmark.
 context: fork
 enabled: false  # Danish demo portal - ships opt-in; /setup enables it when your market is Denmark, or set true here yourself
+metadata: {"openclaw":{"requires":{"bins":["bun"]}}}
 allowed-tools: Bash(bun run .agents/skills/jobnet-search/cli/src/cli.ts *)
 ---
 

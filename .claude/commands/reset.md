@@ -12,7 +12,9 @@ Recognize these scope keywords in `$ARGUMENTS`:
 
 - `profile` — clear only the gitignored shared profile under `documents/profile/`
 - `documents` — delete source documents and application archives under `documents/`
-- `all` — both of the above
+- `all` — both of the above; job state and market preferences remain
+- `full` — preview and clear candidate data across this checkout, including
+  market preferences, scraper state, tracker, registry, generated output and memory
 
 If no recognized scope is supplied, ask:
 
@@ -22,9 +24,10 @@ If no recognized scope is supplied, ask:
 >   search queries, and local CV baseline. Tracked framework templates are untouched.
 > - **`documents`** — Delete CVs, LinkedIn exports, diplomas, references, projects,
 >   postings, and application archives. The folder structure and README are preserved.
-> - **`all`** — Both of the above.
+> - **`all`** — Both of the above; keeps job state and market preferences.
+> - **`full`** — All local candidate data in this checkout (preview before deletion).
 >
-> Reply with `profile`, `documents`, or `all`.
+> Reply with `profile`, `documents`, `all`, or `full`.
 
 ## Step 1: Show exactly what will be cleared
 
@@ -65,6 +68,21 @@ For `documents`, list files in `documents/cv/`, `documents/linkedin/`,
 `documents/diplomas/`, `documents/references/`, `documents/projects/`,
 `documents/postings/`, and `documents/applications/`. Do not list or delete
 `documents/README.md` or `.gitkeep` files.
+
+### If scope is `full`:
+
+Run `python3 tools/reset_state.py` from the current checkout and show its
+`files` list and `preserved` list in full before requesting confirmation. This
+includes `documents/profile/`, `documents/<market>/profile/`, source documents,
+`markets/<market>/jobs/{inbox,evaluated,archived}/`, scraper `seen_jobs.json`,
+`job_search_tracker.csv`, `company_pages.json`, application and generated CV/letter
+outputs, reports and OpenClaw workspace memory. The script refuses to clear
+tracked or non-ignored files. `.gitkeep` files and tracked examples remain.
+`--full`/`full` never applies to another candidate's checkout. Tell the user
+that external services (such as Notion and the model provider), browser sessions,
+and backups remain outside this checkout; `.env` secrets are deliberately not
+cleared. If `COMPANY_PAGES_REGISTRY` points outside this checkout, that file is
+also not cleared. Never claim those locations were reset.
 
 ## Step 2: Require explicit confirmation
 
@@ -108,6 +126,17 @@ rm -f documents/postings/*
 rm -rf documents/applications/*/
 ```
 
+### Full reset
+
+After showing the current preview and receiving the exact confirmation, run:
+
+```bash
+python3 tools/reset_state.py --execute --confirm RESET
+```
+
+If the preview changes, a file is preserved unexpectedly, or the script fails,
+stop and report what remains. Do not improvise a recursive delete.
+
 Do not run `git restore`, `git checkout`, or any command that rewrites tracked
 framework files. In local-profile mode those files contain templates only.
 
@@ -116,9 +145,10 @@ framework files. In local-profile mode those files contain templates only.
 Report exactly which local files/folders were cleared and which were already empty
 or intentionally preserved. Then tell the user:
 
-> The local profile is now blank. Run `/setup --market <market>` (or `/setup`) to
-> initialize `documents/profile/` again. Personal data stays gitignored; verify
-> with `git status --ignored` and never force-add it.
+> If your reset included `profile` (or `full`), the local profile is now blank.
+> Run `/setup --market <market>` (or `/setup`) to initialize it again. Personal
+> files should remain gitignored; verify with `git status --ignored` and never
+> force-add them.
 
 If documents were reset, point to `documents/README.md` and explain that source
 documents can be added again before `/setup`.

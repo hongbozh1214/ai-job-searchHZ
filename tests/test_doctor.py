@@ -28,6 +28,44 @@ class DoctorTests(unittest.TestCase):
                 path.write_text(json.dumps([{"name": "Acme", "careers_url": "https://careers.acme.test", "ats": "generic"}]), encoding="utf-8")
                 self.assertFalse(doctor.registry(root))
 
+    def test_registry_cannot_point_to_another_candidates_checkout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "candidate-1"
+            root.mkdir()
+            other = base / "candidate-2.json"
+            other.write_text('[]', encoding="utf-8")
+            with patch.dict("os.environ", {"COMPANY_PAGES_REGISTRY": str(other)}):
+                self.assertTrue(doctor.registry(root))
+            (root / "company_pages.json").symlink_to(other)
+            with patch.dict("os.environ", {}, clear=True):
+                self.assertTrue(doctor.registry(root))
+
+    def test_private_symlink_isolation_even_when_leaf_does_not_exist(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "candidate-1"
+            other = base / "candidate-2"
+            (root / "documents").mkdir(parents=True)
+            (other / "profile").mkdir(parents=True)
+            (root / "documents" / "profile").symlink_to(other / "profile", target_is_directory=True)
+            self.assertTrue(doctor.private_paths(root))
+            (root / "documents" / "profile").unlink()
+            (root / "documents" / "profile").mkdir()
+            (root / "documents" / "profile" / "candidate.md").symlink_to(other / "profile" / "facts.md")
+            self.assertTrue(doctor.private_paths(root))
+            (root / "documents" / "profile" / "candidate.md").unlink()
+            self.assertFalse(doctor.private_paths(root))
+
+    def test_pdf_and_font_checks_only_warn_when_unavailable(self):
+        output = io.StringIO()
+        with patch("tools.doctor.importlib.util.find_spec", return_value=None), \
+                patch("tools.doctor.shutil.which", return_value=None), \
+                contextlib.redirect_stdout(output):
+            doctor.optional_dependencies()
+        self.assertIn("WARN PDF text extraction", output.getvalue())
+        self.assertIn("WARN Chinese fonts", output.getvalue())
+
 
 class RuntimeIsolationTests(unittest.TestCase):
     def setUp(self):

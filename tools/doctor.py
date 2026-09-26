@@ -2,6 +2,7 @@
 """Read-only OpenClaw workspace preflight; run separately in each checkout."""
 
 import argparse
+import importlib.util
 import json
 import os
 import shutil
@@ -35,6 +36,64 @@ def local_skills(root):
     if not (root / ".agents/skills").is_dir():
         failed |= report("FAIL", "portal skills", "missing .agents/skills")
     return failed
+
+
+def private_paths(root):
+    """Reject private paths whose symlinks lead into another checkout."""
+    checkout = root.resolve(strict=True)
+    paths = [
+        "documents/profile", "documents/cv", "documents/linkedin",
+        "documents/applications", "documents/postings", "job_scraper",
+        ".claude/skills/job-scraper/job_scraper", "company_research",
+        "job_search_tracker.csv", "company_pages.json", "USER.md", "MEMORY.md",
+        "memory", "memory.md", "gmail_sync", "reports",
+    ]
+    scan_paths = ["documents/profile", "documents/cv", "documents/applications",
+                  "documents/postings", "documents/linkedin", "job_scraper", "company_research"]
+    for market in ("china", "europe", "finland"):
+        paths.extend((f"documents/{market}/profile", f"markets/{market}/jobs"))
+        scan_paths.extend((f"documents/{market}/profile", f"markets/{market}/jobs"))
+    failed = False
+    for name in paths:
+        path = root / name
+        # Check each existing component: a missing leaf under an outside
+        # symlink is still an isolation failure before setup creates it.
+        for part in (path, *path.parents):
+            if part == root.parent:
+                break
+            if part.is_symlink() and not part.resolve().is_relative_to(checkout):
+                failed |= report("FAIL", "private path isolation", f"{name} resolves outside this checkout")
+                break
+    for name in scan_paths:
+        directory = root / name
+        if not directory.is_dir() or not directory.resolve().is_relative_to(checkout):
+            continue
+        for current, dirs, files in os.walk(directory, followlinks=False):
+            for child in (Path(current) / entry for entry in dirs + files):
+                if child.is_symlink() and not child.resolve().is_relative_to(checkout):
+                    failed |= report("FAIL", "private path isolation", f"a link within {name} resolves outside this checkout")
+    if not failed:
+        report("OK", "private path isolation", "known profile and state paths stay in this checkout")
+    return failed
+
+
+def optional_dependencies():
+    if importlib.util.find_spec("pypdf") or shutil.which("pdftotext"):
+        report("OK", "PDF text extraction", "pypdf or pdftotext available")
+    else:
+        report("WARN", "PDF text extraction", "install pypdf or pdftotext for ATS text checks")
+    if not shutil.which("fc-list"):
+        report("WARN", "Chinese fonts", "fc-list unavailable; verify a CJK font before China LaTeX compilation")
+        return
+    try:
+        fonts = subprocess.run(["fc-list", ":lang=zh", "family"], capture_output=True,
+                               text=True, timeout=10, check=True)
+        if fonts.stdout.strip():
+            report("OK", "Chinese fonts", "a Chinese font is discoverable")
+        else:
+            report("WARN", "Chinese fonts", "install a CJK font before China LaTeX compilation")
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        report("WARN", "Chinese fonts", "cannot query fontconfig; verify a CJK font manually")
 
 
 def runtime_skill(agent, root):
@@ -107,6 +166,10 @@ def runtime_skill(agent, root):
 def registry(root):
     configured = os.environ.get("COMPANY_PAGES_REGISTRY")
     path = Path(configured).expanduser() if configured else root / "company_pages.json"
+    if configured and not path.is_absolute():
+        path = root / path
+    if not path.resolve().is_relative_to(root.resolve()):
+        return report("FAIL", "company registry", "registry resolves outside this checkout; use a per-agent registry")
     if not path.is_file():
         report("WARN", "company registry", "absent; create a personal company_pages.json to use company-pages-search")
         return False
@@ -141,6 +204,8 @@ def main(argv=None, root=ROOT):
     failed |= executable("lualatex")
     failed |= executable("xelatex")
     failed |= local_skills(root)
+    failed |= private_paths(root)
+    optional_dependencies()
     failed |= runtime_skill(args.agent, root)
     failed |= registry(root)
     print("Result: FAIL" if failed else "Result: OK (review WARN items above)")

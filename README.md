@@ -10,7 +10,7 @@
   <a href="https://trendshift.io/repositories/43622?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-43622" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/43622/daily" alt="MadsLorentzen%2Fai-job-search | Trendshift" width="250" height="55"/></a>
 </p>
 
-[![CI](https://github.com/MadsLorentzen/ai-job-search/actions/workflows/ci.yml/badge.svg)](https://github.com/MadsLorentzen/ai-job-search/actions/workflows/ci.yml)
+[![CI](https://github.com/hongbozh1214/ai-job-searchHZ/actions/workflows/ci.yml/badge.svg?branch=feature%2Flocal-profile-mode)](https://github.com/hongbozh1214/ai-job-searchHZ/actions/workflows/ci.yml?query=branch%3Afeature%2Flocal-profile-mode)
 
 An AI-powered job application framework for local agent runtimes. This fork adds
 an OpenClaw/OpenAI entry point, three market overlays (`china`, `europe`, and
@@ -24,7 +24,11 @@ candidate data to the public framework repository.
 >
 > This project has **no affiliated cryptocurrency, token, or paid sponsorship program**. Anything claiming otherwise is unauthorized and should be treated as a scam. The only ways to support the project are the Ko-fi link below and contributing on GitHub.
 
-## Does it actually work?
+## Upstream author's story
+
+The following experience is from [Mads Lorentzen](https://github.com/MadsLorentzen),
+the original author of the framework; this fork adds local profiles and market
+workflows, and does not claim the same outcomes for other candidates.
 
 I'm a geophysicist by training. When my position was cut in late 2025, I built this framework to run my own job search - the same `/scrape`, `/apply`, and `/interview` workflow in this repo, used weekly, on my own career. I was upfront about it with every employer I spoke to, and instead of counting against me, it usually sparked a genuine technical conversation.
 
@@ -171,22 +175,26 @@ review the text and update your profile manually. See
 
 ### 4. Search for jobs
 
-```bash
-/scrape
+```text
+$job-search scrape --market finland
+# or: europe / china
 ```
 
-This searches multiple job portals for positions matching your profile, deduplicates results, and presents them sorted by fit. Pick a match to run `/apply` on it directly — or, when a scrape returns more jobs than you want to eyeball, run `/rank` to batch-score them all against the fit framework and get a ranked shortlist first.
+This searches portals for positions matching your profile and deduplicates results.
+Use `$job-search rank --market finland` to score a batch, or hand a posting to
+the apply workflow directly. China postings that require manual retrieval must
+have their full job description pasted into the local inbox before ranking.
 
 ### 5. Apply to a job
 
-```bash
-/apply https://jobindex.dk/job/1234567
+```text
+$job-search apply --market finland https://employer.example/jobs/123
 ```
 
 If the URL can't be fetched (some job portals block automated access), you can paste the job description directly instead:
 
-```bash
-/apply <paste the full job description here>
+```text
+$job-search apply --market finland <paste the full job description here>
 ```
 
 This runs the full workflow: evaluate fit, draft CV + cover letter, review with a second agent, revise, and present the final output.
@@ -195,20 +203,23 @@ Postings are treated as untrusted input (the workflow follows no instructions em
 
 ## Other commands
 
-`/setup`, `/scrape`, and `/apply` form the core workflow. Ten more commands extend it once your profile is in place:
+Setup, scrape, and apply form the core workflow. The additional commands below
+are also available through `$job-search <command> --market <market>` in OpenClaw
+where the skill supports that command; slash commands remain available in
+compatible command runtimes.
 
 - **`/interview`** preps you for a scheduled interview on a tracked application. It builds a stage-specific prep pack from the application's archive (the exact posting, the CV and cover letter the interviewer actually read, feedback recorded from earlier rounds), researches the company and interviewers with a verify-before-use rule, maps likely questions to your STAR examples, and offers a mock interview following the roleplay protocol in `07-interview-prep.md`. Gaps get honest bridge answers, never invented experience.
 - **`/outcome`** records what happened to an application - interview stages, offers, rejections, silence. It archives the submitted CV, cover letter, and posting text into `documents/applications/<company>_<role>/`, keeps `outcome.md` in the format `/setup` Path A parses, and updates the tracker. It also owns the stretch before there is an outcome to record: `/outcome followup` surfaces open applications that have gone quiet (default 10 days), drafts a short channel-appropriate follow-up in your writing style using only claims from the materials you already submitted (drafts only, never sends; at most twice per application), and offers a thank-you note in the same turn an interview stage is recorded. Once a few applications resolve, it points you back to `/setup` to calibrate the fit framework from what actually got interviews.
 - **`/notion-sync`** publishes a one-way, read-only view of the pipeline into a Notion database via the official Notion MCP server (OAuth, no API keys) - one row per ranked job plus every tracked application, with a write-once briefing page per row. The repo files stay the system of record: nothing syncs back, and documents sync as filenames only. Complements `/html-report`: that is the deep offline dashboard you regenerate at your desk; this is the glanceable live view from anywhere Notion runs (desktop, web, phone).
 - **`/gmail-sync`** reads your Gmail (via the Gmail connector) for status signals on your open applications - interview invites, assessment links, offers, rejections - and proposes them as a batch for you to approve before anything is written to the tracker or `outcome.md`, citing the source email on every proposed change. Offers stop short of proposing `hired`/`offer_declined` since that's your call; conflicting or unmatched signals get flagged for a manual `/outcome` pass instead of guessed.
-- **`/rank`** bridges `/scrape` and `/apply`: it batch-scores all newly scraped postings against the fit framework (parallel agents fetch each posting and score the five evaluation dimensions) and returns a ranked shortlist with honest per-job strengths and gaps. Deal-breakers veto, deadlines get urgency flags, dead postings get marked expired. Pick a number and it hands off to the full `/apply` workflow.
+- **`/rank`** bridges `/scrape` and `/apply`: it batch-scores new postings against four weighted fit dimensions and checks market-specific deal-breakers. It returns a shortlist with per-job strengths and gaps, deadline flags, and explicit vetoes. Pick a role to hand off to `/apply`.
 - **`/expand`** enriches your profile by scanning public sources you've already linked in it (GitHub repos, portfolio site, Kaggle, Google Scholar) and looking up syllabi for named courses and certifications. Discovered competencies are added to your profile with a source tag. Useful right after `/setup` to surface skills that documents alone don't make explicit.
 - **`/upskill`** analyzes the gap between your profile, your tracked job postings, and your ranked-but-untracked postings (`/rank`'s recorded gaps in `seen_jobs.json`) — or a single posting via `/upskill <URL>`. Produces a prioritized heatmap of skill gaps and a learning plan with web-searched study resources and time estimates. Useful for career planning between applications.
 - **`/html-report`** generates a self-contained HTML dashboard from `job_search_tracker.csv` and the application archives — stat cards, status/sector/channel/funnel charts (inline SVG, no external dependencies), and a filterable applications table. Opens directly in a browser, fully offline. Re-run it any time after `/apply` or `/outcome` adds new entries.
 - **`/add-template`** registers your own CV or cover letter template (LaTeX, Typst, or another toolchain) in place of the stock ones. It captures the template's instructions (source extension, compile command, fonts, style rules, page limit), runs a mandatory test compile, and wires the template into `/apply`. See [Custom templates](#custom-templates) below.
 - **`/add-portal`** generates a job-portal search skill for a job board in your market. It investigates the portal (search URL pattern, result structure, access rules), scaffolds the CLI skill from the same structure as the shipped ones, and test-runs a live query before registering. See [Job search tools](#job-search-tools) below.
 
-`/reset` is also available, see [Starting over](#starting-over) below.
+`/reset` is also available in compatible command runtimes; see [Starting over](#starting-over) below.
 
 ## File structure
 
@@ -418,10 +429,15 @@ To wipe your profile data and start fresh:
 ```
 /reset profile    # clears skill files, preserves framework rules
 /reset documents  # deletes files from documents/ folder
-/reset all        # both
+/reset all        # profile + documents only; market preferences and job state remain
+/reset full       # preview all local candidate data in this checkout, then confirm
 ```
 
-`/reset` shows exactly what will be deleted and requires you to type `RESET` to confirm. Nothing is deleted until you do.
+`/reset` shows the files to remove and requires an exact `RESET` confirmation.
+In OpenClaw, inspect the same full-reset preview with `python3 tools/reset_state.py`
+in the candidate checkout; the script deletes only after `--execute --confirm RESET`.
+The full reset preserves tracked templates and `.env` secrets. It does not erase
+external provider data, backups or browser sessions.
 
 ### Staying up to date
 

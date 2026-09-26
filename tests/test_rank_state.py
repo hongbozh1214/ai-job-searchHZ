@@ -746,6 +746,44 @@ class LocalChina(RankStateCase):
                                     + "负责项目开发与团队协作，要求了解具体项目、开展文档编制与跟进沟通。" * 5), encoding="utf-8")
         return path
 
+    def test_two_local_postings_flow_through_import_rank_veto_sweep_and_tracker(self):
+        self.write_state({"manual": entry(market="china", fetch_status="manual_required")})
+        for number in (1001, 1002):
+            (self.inbox / f"posting-{number}.md").write_text(
+                f"# 工程师 @ 公司\n**Source URL:** https://example.com/{number}\n"
+                "## Paste Full JD Below\n" + "招聘工程师，负责实际项目研发、沟通及交付。" * 15,
+                encoding="utf-8",
+            )
+        imported = self.run_tool("import-local", "--market", "china", "--inbox", str(self.inbox))
+        self.assertEqual(len(imported["imported"]), 2)
+        selected = self.run_tool("candidates", "--market", "china", "--inbox", str(self.inbox),
+                                 "--tracker", str(self.tmp / "none.csv"))
+        self.assertEqual(len(selected["selected"]), 2)
+        self.assertEqual(selected["awaiting_local_jd"], 1)
+        keys = {row["url"].rsplit("/", 1)[-1]: row["key"] for row in selected["selected"]}
+        gates = {name: {"verdict": "PASS"} for name in
+                 ("compensation", "work_schedule", "employment_type", "social_insurance", "role_type", "qualifications")}
+        results = []
+        for number in (1001, 1002):
+            results.append({"key": keys[str(number)], "status": "scored", "deadline": "2026-09-07",
+                            "scores": dict.fromkeys(("technical", "experience", "behavioral", "career"), 90),
+                            "market_gates": gates if number == 1001 else {
+                                **gates, "work_schedule": {"verdict": "FAIL", "reason": "Schedule conflicts with stated availability"}},
+                            "location_verdict": "PASS", "language_gate": "PASS"})
+        file = self.tmp / "batch.json"
+        file.write_text(json.dumps(results), encoding="utf-8")
+        ranked = self.run_tool("apply", "--market", "china", "--results", str(file))
+        self.assertEqual([r["key"] for r in ranked["ranked"]], [keys["1001"]])
+        self.assertEqual([r["key"] for r in ranked["vetoed"]], [keys["1002"]])
+        sweep = self.run_tool("sweep", "--market", "china")
+        self.assertEqual([r["key"] for r in sweep["closing_soon"]], [keys["1001"]])
+        self.assertEqual(len(self.run_tool("import-local", "--market", "china", "--inbox", str(self.inbox))["unchanged"]), 2)
+        tracker = self.tmp / "tracker.csv"
+        tracker.write_text("company,role,source\n公司,工程师,https://example.com/1001\n", encoding="utf-8")
+        remaining = self.run_tool("candidates", "--all", "--market", "china", "--inbox", str(self.inbox),
+                                  "--tracker", str(tracker))
+        self.assertEqual([row["key"] for row in remaining["selected"]], [keys["1002"]])
+
     def test_import_offline_and_rank_same_key_without_refetch(self):
         file = self.jd()
         first = self.run_tool("import-local", "--market", "china", "--inbox", str(self.inbox), "--file", str(file))
