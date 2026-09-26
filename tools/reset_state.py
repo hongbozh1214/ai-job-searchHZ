@@ -31,6 +31,10 @@ GENERATED = (
     "cover_letters/cover_*.*", "cover_letters/Cover_*.*",
     "cover_letters/chinese/cover_*.*", "cover_letters/chinese/Cover_*.*",
 )
+GENERATED_DIRS = (
+    "cv/build", "cv/chinese/build", "cover_letters/build",
+    "cover_letters/chinese/build",
+)
 
 
 def git_paths(root, *args):
@@ -70,6 +74,8 @@ def inventory(root, scope="full"):
             collect(root / name)
     if scope == "full":
         for name in PRIVATE_DIRS:
+            collect(root / name)
+        for name in GENERATED_DIRS:
             collect(root / name)
         for market in ("china", "europe", "finland"):
             collect(root / "documents" / market / "profile")

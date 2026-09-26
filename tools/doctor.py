@@ -2,6 +2,7 @@
 """Read-only OpenClaw workspace preflight; run separately in each checkout."""
 
 import argparse
+import fnmatch
 import importlib.util
 import json
 import os
@@ -12,6 +13,27 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
+PERSONAL_DIRS = (
+    "documents/profile", "documents/cv", "documents/linkedin", "documents/diplomas",
+    "documents/references", "documents/projects", "documents/postings",
+    "documents/applications", "documents/interview", "job_scraper",
+    ".claude/skills/job-scraper/job_scraper", ".claude/skills/upskill/upskill",
+    "company_research", "upskill", "memory", ".openclaw", "gmail_sync", "reports",
+)
+PERSONAL_FILES = (
+    "job_search_tracker.csv", "company_pages.json", "salary_data.json",
+    "USER.md", "MEMORY.md", "memory.md", "SOUL.md", "IDENTITY.md",
+    "TOOLS.md", "HEARTBEAT.md", "BOOT.md", "BOOTSTRAP.md", "DREAMS.md",
+)
+GENERATED_PATTERNS = (
+    "cv/main_*.*", "cv/chinese/main_*.*", "cv/*.txt",
+    "cover_letters/cover_*.*", "cover_letters/Cover_*.*",
+    "cover_letters/chinese/cover_*.*", "cover_letters/chinese/Cover_*.*",
+)
+TRACKED_EXAMPLES = {
+    "cv/main_example.tex", "cv/chinese/main_example.tex",
+    "cover_letters/cover_example.tex", "cover_letters/chinese/cover_example.tex",
+}
 
 
 def report(level, subject, detail):
@@ -41,17 +63,8 @@ def local_skills(root):
 def private_paths(root):
     """Reject private paths whose symlinks lead into another checkout."""
     checkout = root.resolve(strict=True)
-    paths = [
-        "documents/profile", "documents/cv", "documents/linkedin",
-        "documents/applications", "documents/postings", "job_scraper",
-        ".claude/skills/job-scraper/job_scraper", "company_research",
-        "job_search_tracker.csv", "company_pages.json", "USER.md", "MEMORY.md",
-        "memory", "memory.md", ".openclaw", "gmail_sync", "reports",
-    ]
-    scan_paths = ["documents/profile", "documents/cv", "documents/applications",
-                  "documents/postings", "documents/linkedin", "job_scraper",
-                  ".claude/skills/job-scraper/job_scraper", "company_research",
-                  "memory", ".openclaw", "gmail_sync", "reports"]
+    paths = list(PERSONAL_DIRS) + list(PERSONAL_FILES) + ["cv", "cover_letters"]
+    scan_paths = list(PERSONAL_DIRS) + ["cv", "cover_letters"]
     for market in ("china", "europe", "finland"):
         paths.extend((f"documents/{market}/profile", f"markets/{market}/jobs"))
         scan_paths.extend((f"documents/{market}/profile", f"markets/{market}/jobs"))
@@ -77,6 +90,42 @@ def private_paths(root):
     if not failed:
         report("OK", "private path isolation", "known profile and state paths stay in this checkout")
     return failed
+
+
+def tracked_private_files(root):
+    """An ignored personal file already in the Git index is still publishable."""
+    try:
+        result = subprocess.run(["git", "ls-files", "--cached", "-z", "--full-name"],
+                                cwd=root, capture_output=True, check=True, timeout=15)
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return report("FAIL", "private Git index", "cannot inspect tracked files in this checkout")
+
+    configured = os.environ.get("COMPANY_PAGES_REGISTRY")
+    registry_path = (Path(configured).expanduser() if configured else root / "company_pages.json")
+    if not registry_path.is_absolute():
+        registry_path = root / registry_path
+    registry_name = (registry_path.relative_to(root).as_posix()
+                     if registry_path.is_relative_to(root) else None)
+
+    def personal(name):
+        path = Path(name)
+        if path.name == ".gitkeep" or name in TRACKED_EXAMPLES:
+            return False
+        if path.name == ".env" or path.name.startswith(".env."):
+            return True
+        if name in PERSONAL_FILES or name == registry_name or any(path == Path(d) or path.is_relative_to(d) for d in PERSONAL_DIRS):
+            return True
+        if len(path.parts) >= 4 and path.parts[0] == "markets" and path.parts[1] in ("china", "europe", "finland") and path.parts[2] == "jobs":
+            return True
+        if len(path.parts) >= 4 and path.parts[0] == "documents" and path.parts[1] in ("china", "europe", "finland") and path.parts[2] == "profile":
+            return True
+        return any(fnmatch.fnmatchcase(name, pattern) for pattern in GENERATED_PATTERNS)
+
+    tracked = [os.fsdecode(item) for item in result.stdout.split(b"\0") if item]
+    exposed = [name for name in tracked if personal(name)]
+    if exposed:
+        return report("FAIL", "private Git index", f"{len(exposed)} personal path(s) tracked or staged; remove them from the index before publishing")
+    return report("OK", "private Git index", "no known personal files tracked or staged")
 
 
 def optional_dependencies():
@@ -212,6 +261,7 @@ def main(argv=None, root=ROOT):
     failed |= executable("xelatex")
     failed |= local_skills(root)
     failed |= private_paths(root)
+    failed |= tracked_private_files(root)
     optional_dependencies()
     failed |= runtime_skill(args.agent, root)
     failed |= registry(root)

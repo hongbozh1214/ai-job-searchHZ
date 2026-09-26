@@ -17,7 +17,7 @@ class ResetStateTests(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name)
         subprocess.run(["git", "init", "-q", str(self.root)], check=True)
-        (self.root / ".gitignore").write_text("documents/**\nmarkets/*/jobs/**\njob_search_tracker.csv\ncompany_pages.json\n", encoding="utf-8")
+        (self.root / ".gitignore").write_text("documents/**\nmarkets/*/jobs/**\njob_search_tracker.csv\ncompany_pages.json\nbuild/\n", encoding="utf-8")
         (self.root / "documents/profile").mkdir(parents=True)
         (self.root / "documents/profile/.gitkeep").touch()
         (self.root / "documents/profile/private.md").write_text("secret", encoding="utf-8")
@@ -103,6 +103,22 @@ class ResetStateTests(unittest.TestCase):
         code, preview = self.run_reset()
         self.assertEqual(code, 0)
         self.assertIn("markets/china/jobs/root.md", preview["files"])
+
+    def test_full_scope_previews_and_clears_failed_template_builds_only_in_this_checkout(self):
+        for folder in reset_state.GENERATED_DIRS:
+            target = self.root / folder / "candidate.aux"
+            target.parent.mkdir(parents=True)
+            target.write_text("generated personal content", encoding="utf-8")
+        code, preview = self.run_reset()
+        self.assertEqual(code, 0)
+        for folder in reset_state.GENERATED_DIRS:
+            self.assertIn(f"{folder}/candidate.aux", preview["files"])
+        _, profile = self.run_reset("--scope", "profile")
+        self.assertFalse(any("/build/" in file for file in profile["files"]))
+        code, _ = self.run_reset("--execute", "--confirm", "RESET")
+        self.assertEqual(code, 0)
+        for folder in reset_state.GENERATED_DIRS:
+            self.assertFalse((self.root / folder / "candidate.aux").exists())
 
     def test_repo_ignores_direct_market_jobs_files(self):
         repo = Path(__file__).resolve().parent.parent

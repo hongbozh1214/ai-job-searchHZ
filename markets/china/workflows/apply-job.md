@@ -21,6 +21,16 @@ fetch a China job platform during this workflow. Do not draft from a search
 snippet. The saved inbox file is the single posting input used throughout
 drafting and archiving. A job does not need a rank-state entry to be drafted.
 
+**Before drafting any application pack or full document**, run
+`python3 tools/application_key.py --company "<company>" --role "<role>" --market china --url "<source URL>"`
+(omit `--url` when absent) and keep its returned slug and action. This is
+`/apply` Step 2's preflight: `new_attempt` gets a separate dated pack,
+CV/letter (when requested), tracker marker and archive even for the same URL
+as an already closed application. Never postpone this choice to Step 4. For
+URL-less open rows, compare the existing pack's `**Source:**` inbox path to
+this saved JD before reusing the slug. If no pack exists but an archive is
+occupied, or sources differ, ask for clarification before writing anything.
+
 ## Step 1: Read Inputs
 
 Read:
@@ -100,13 +110,11 @@ There are two output modes:
 
 ## Step 4: Save Application Pack
 
-Derive a safe posting-specific `<slug>` from `tools/job_key.py` and the saved
-JD URL. If the same company/role already has an application or archive with a
-**different** known URL, use the `make_url_collision_key` URL suffix from that
-tool to keep both postings distinct. If a second posting lacks a URL or the
-identity of an existing pack cannot be verified, stop and ask which posting
-the user means; never replace an older pack. Keep this exact slug for the
-pack, full-document filenames and application archive. Write
+Use the selected `<slug>` from the preflight in Step 0. If its action was
+`refresh_open`, confirm the existing pack belongs to the same saved JD before
+replacing it; keep a previous pack if its source cannot be verified. Never
+replace an older application pack. Keep this exact slug for the pack,
+full-document filenames and application archive. Write
 `markets/china/jobs/evaluated/<slug>-application.md`:
 
 ```markdown

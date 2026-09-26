@@ -83,6 +83,9 @@ includes `documents/profile/`, `documents/<market>/profile/`, source documents,
 `job_search_tracker.csv`, `company_pages.json`, application and generated CV/letter
 outputs, reports and OpenClaw workspace memory. The script refuses to clear
 tracked or non-ignored files. `.gitkeep` files and tracked examples remain.
+It also previews ignored LaTeX intermediates under `cv/build/`,
+`cover_letters/build/`, and their `chinese/build/` counterparts, including
+files left by an interrupted custom-template compilation.
 `full` never applies to another candidate's checkout. Tell the user
 that external services (such as Notion and the model provider), browser sessions,
 and backups remain outside this checkout; `.env` secrets are deliberately not

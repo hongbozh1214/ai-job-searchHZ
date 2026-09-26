@@ -186,6 +186,11 @@ keep the existing folder and give the new posting a URL-suffixed slug using
 Store `posting_key:<slug>` in that tracker row's notes and reuse this slug for
 draft filenames and the archive. Existing China rows use `china_posting_key:<slug>`.
 If a source URL is missing and the match is ambiguous, ask before creating an archive.
+Use `python3 tools/application_key.py --company "<company>" --role "<role>" --url "<source>" --market europe`
+**before drafting** to choose the right slug. A new application after a closed
+one gets its own dated `-attempt-YYYYMMDD` slug, even for the same URL. Store
+the selected marker on every new tracker row so later workflows can locate
+that specific attempt. For China use `--market china` and `china_posting_key:`.
 
 Examples:
 ```

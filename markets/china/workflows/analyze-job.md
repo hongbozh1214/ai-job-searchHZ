@@ -86,8 +86,19 @@ Verdict bands:
 
 ## Step 4: Write Evaluation
 
-Create `markets/china/jobs/evaluated/<slug>.md`, where `<slug>` is a lowercase
-company-role slug derived from the job file name or extracted facts.
+Before writing, select `<slug>` with the read-only helper:
+
+```bash
+python3 tools/china_evaluation_key.py --source "markets/china/jobs/inbox/<saved-JD>.md" --company "<company>" --title "<role>" --url "<source URL>"
+```
+
+Omit `--url` if the saved JD gives none. The helper checks the existing report's
+saved `**Source:**` and URL; for a distinct known URL it uses the stable URL
+collision key, and for a distinct URL-less local JD it uses a stable suffix
+from the inbox path. If an old report has no trustworthy source, it stops for
+manual review. Never overwrite another JD's evaluation on a company-role
+match. Create `markets/china/jobs/evaluated/<slug>.md` only after choosing the
+slug. Re-running an evaluation for the **same saved JD** may update that file.
 
 Use this structure:
 
@@ -95,6 +106,7 @@ Use this structure:
 # Job Evaluation: <Role> @ <Company>
 
 **Source:** <job file>
+**Source URL:** <source URL or not provided>
 **Date:** YYYY-MM-DD
 **Verdict:** <band>
 **Overall Score:** <score>/100

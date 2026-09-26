@@ -40,8 +40,10 @@ python3 tools/doctor.py --agent job-search
 
 The check reports Bun, Python, both LaTeX engines, local portal skill files,
 OpenClaw's actual discovery of `job-search` for that agent, and the personal
-`company_pages.json` registry. It also checks private paths for symlinks outside
-this checkout and warns if PDF text extraction or Chinese fonts are unavailable.
+`company_pages.json` registry. It checks private paths (including source documents
+and generated CV/letter folders) for symlinks outside this checkout and fails
+when a personal file is already tracked or staged in Git. It warns if PDF text
+extraction or Chinese fonts are unavailable.
 A missing registry is a warning until you choose
 employers; a copied example registry is an error. A missing dependency or
 undiscovered runtime skill gives exit code 1. The reported `workspaceDir` must
@@ -50,7 +52,8 @@ resolve to this checkout's `skills/job-search/SKILL.md`. A same-named skill from
 another workspace or a global override does not pass. Missing path information
 also fails: a skill name alone cannot prove isolation. Run this check in the
 same container/host as the agent so runtime paths refer to the same filesystem.
-It reads files and calls only `openclaw skills list` and `openclaw skills info`;
+It reads files and calls only `git ls-files`, `openclaw skills list` and
+`openclaw skills info`;
 it does not contact job sites or print registry entries.
 
 Gitignored files stay outside public Git, but the configured model provider may

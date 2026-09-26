@@ -72,6 +72,64 @@ class DoctorTests(unittest.TestCase):
             (root / "memory" / "other").symlink_to(other, target_is_directory=True)
             self.assertTrue(doctor.private_paths(root))
 
+    def test_all_personal_output_and_source_dirs_reject_another_checkout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root, other = base / "candidate-1", base / "candidate-2"
+            root.mkdir()
+            other.mkdir()
+            for folder in ("cv", "cover_letters", "documents/diplomas", "documents/references",
+                           "documents/projects", "upskill"):
+                with self.subTest(folder=folder):
+                    alias = root / folder
+                    alias.parent.mkdir(parents=True, exist_ok=True)
+                    alias.symlink_to(other, target_is_directory=True)
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        self.assertTrue(doctor.private_paths(root))
+                    alias.unlink()
+
+    def test_git_index_fails_for_force_added_personal_data_but_keeps_examples(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            (root / "documents/profile").mkdir(parents=True)
+            (root / "documents/profile/.gitkeep").touch()
+            (root / "cv").mkdir()
+            (root / "cv/main_example.tex").write_text("neutral template")
+            subprocess.run(["git", "add", "documents/profile/.gitkeep", "cv/main_example.tex"], cwd=root, check=True)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertFalse(doctor.tracked_private_files(root))
+            private = root / "company_pages.json"
+            private.write_text('[{"name":"Private employer"}]')
+            subprocess.run(["git", "add", "company_pages.json"], cwd=root, check=True)
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertTrue(doctor.tracked_private_files(root))
+            self.assertNotIn("Private employer", output.getvalue())
+
+    def test_git_index_fails_for_staged_candidate_cv_and_market_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            for name in ("cv/main_acme.tex", "documents/finland/profile/preferences.md",
+                         "markets/china/jobs/inbox/acme.md", ".env.production"):
+                file = root / name
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_text("private")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertTrue(doctor.tracked_private_files(root))
+
+    def test_git_index_checks_custom_registry_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            (root / "watchlist.json").write_text("[]")
+            subprocess.run(["git", "add", "watchlist.json"], cwd=root, check=True)
+            with patch.dict("os.environ", {"COMPANY_PAGES_REGISTRY": "watchlist.json"}), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertTrue(doctor.tracked_private_files(root))
+
     def test_pdf_and_font_checks_only_warn_when_unavailable(self):
         output = io.StringIO()
         with patch("tools.doctor.importlib.util.find_spec", return_value=None), \
