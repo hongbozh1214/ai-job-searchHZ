@@ -10,21 +10,38 @@ You are preparing interview material for a China-market role.
 interview <job-file-or-evaluation>
 ```
 
-If the path is missing or invalid, ask the user for a job file under
-`markets/china/jobs/inbox/` or an evaluation file under `markets/china/jobs/evaluated/`.
+Use `.claude/commands/interview.md` Step 0 to identify **one exact tracker
+application row**, including its source URL, status/date and
+`china_posting_key:<slug>` marker. A saved inbox JD or evaluation file is an
+input for locating that row, not permission to match only a company/role. When
+several rows fit, list the sources and dates and ask which application has the
+interview. For an untracked interview, accept the full JD directly and prepare
+from it without claiming any old pack or submitted materials belong to it.
 
 ## Step 1: Read Inputs
 
 Read:
 
-- The job or evaluation file.
+- The selected row's archived posting and, if present, its evaluation file;
+  confirm the evaluation's `**Source:**` or URL is this same saved JD.
+- The exact application's archive under `documents/applications/<slug>/`,
+  chosen from `china_posting_key:<slug>` in that row; apply the shared
+  `/interview` legacy ambiguity rule when the marker is missing.
+- The row's `china_text_pack:<relative-pack-path>` if present; check its
+  `**Source:**` against the selected JD. A pack for a sibling posting or
+  a prior application attempt must never be used.
+- `documents/profile/01-candidate-profile.md` and approved local STAR notes.
 - `documents/china/profile/candidate.md`
 - `documents/china/profile/preferences.md`
 - `documents/china/profile/evidence.md`
 - `markets/china/templates/interview-answer.md`
 
-If an application pack exists for the same company/role, read it for positioning
-consistency.
+For a text-only application, ask what the user actually sent before describing
+pack text as submitted. For a full-document application, prefer the archive's
+submitted CV and letter; use the selected tracker row's exact file paths only
+when the submitted archive is unavailable. Stop and ask if these disagree.
+China-only notes are translations or references; resolve conflicting facts
+against the shared profile with the user before writing answers.
 
 ## Step 2: Identify Interview Themes
 
@@ -47,7 +64,8 @@ For each important question, provide:
 - Metrics or facts to mention.
 - What not to overclaim.
 
-Use `documents/china/profile/evidence.md` as the source of truth.
+Ground claims in approved evidence in `documents/profile/`, using the China
+evidence file only for localized wording or pointers to that shared evidence.
 
 ## Step 4: Prepare Questions To Ask
 
@@ -62,7 +80,13 @@ Suggest questions about:
 
 ## Step 5: Write Prep File
 
-Write `markets/china/jobs/evaluated/<slug>-interview.md`:
+For a tracked application, save `documents/applications/<slug>/interview_prep_<stage>.md`
+as the shared interview workflow does; `<slug>` is the selected row's marker,
+and `<stage>` is the specific interview stage. Preserve older stages. If the
+same stage is prepared again, review the existing pack and save a dated
+revision rather than silently overwriting it. For an untracked interview,
+ask the user where to keep a clearly labeled prep draft and do not place it
+in an existing application archive.
 
 ```markdown
 # Interview Prep: <Role> @ <Company>

@@ -78,7 +78,7 @@ class ScrapeSearchOutputContractTests(unittest.TestCase):
 # Step 4's storage schema, derived the same way as the Step 2 contract above:
 # the field list lives in the spec, never duplicated here, so a schema change
 # fails this test instead of silently agreeing with a stale copy.
-_STEP4_SCHEMA_BLOCK = re.compile(r"Add ALL fetched jobs.*?```json(.*?)```", re.DOTALL)
+_STEP4_SCHEMA_BLOCK = re.compile(r"2\. Add new jobs.*?```json(.*?)```", re.DOTALL)
 
 
 def derive_stored_fields() -> frozenset[str]:
@@ -153,11 +153,9 @@ class SeenJobsDedupContinuityTests(unittest.TestCase):
 
     def test_existing_urls_are_seen_regardless_of_key(self):
         text = SCRAPER_SKILL.read_text(encoding="utf-8")
-        self.assertRegex(
-            text,
-            r"URL matches any existing `seen_jobs\.json` entry, regardless of\s+that entry's key",
-            "legacy seen_jobs entries must be matched by URL during the key-rule transition",
-        )
+        self.assertIn("URL matches any existing `seen_jobs.json` entry", text)
+        self.assertIn("do not create a\n  duplicate key", text)
+        self.assertIn("register-market", text)
 
     def test_step4_presentation_mentions_url_deduplication(self):
         text = SCRAPER_SKILL.read_text(encoding="utf-8")

@@ -37,6 +37,8 @@ responsibilities or requirements.
 
 Read:
 
+- `documents/profile/01-candidate-profile.md` as the factual authority;
+  reconcile any contradictory China-only notes before scoring.
 - `documents/china/profile/candidate.md`
 - `documents/china/profile/preferences.md`
 - `documents/china/profile/evidence.md`

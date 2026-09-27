@@ -22,23 +22,37 @@ snippet. The saved inbox file is the single posting input used throughout
 drafting and archiving. A job does not need a rank-state entry to be drafted.
 
 **Before drafting any application pack or full document**, run
-`python3 tools/application_key.py --company "<company>" --role "<role>" --market china --url "<source URL>"`
+`python3 tools/application_key.py --company "<company>" --role "<role>" --market china --job-file "markets/china/jobs/inbox/<saved-JD>.md" --url "<source URL>"`
 (omit `--url` when absent) and keep its returned slug and action. This is
 `/apply` Step 2's preflight: `new_attempt` gets a separate dated pack,
 CV/letter (when requested), tracker marker and archive even for the same URL
 as an already closed application. Never postpone this choice to Step 4. For
 URL-less open rows, compare the existing pack's `**Source:**` inbox path to
-this saved JD before reusing the slug. If no pack exists but an archive is
-occupied, or sources differ, ask for clarification before writing anything.
+this saved JD before reusing the slug. The helper verifies the pack source for
+URL-based matches too. `resume_draft` means a pack was saved before the tracker
+row was written: read and verify that pack, keep it intact, finish any missing
+documents and ask whether anything was already sent before recording the
+tracker status with the returned slug. If a draft needs
+changes, save a separately named revision after review; never silently replace
+the resumed pack. If an archive is occupied or sources differ, stop before writing.
+The JSON also returns `source_sha256`. Add `**Source SHA256:** <source_sha256>`
+after the pack's `**Source:**` field when saving it. This detects a changed JD
+even if the inbox filename stays the same. An older pack without this field
+needs manual review before it can be resumed automatically.
 
 ## Step 1: Read Inputs
 
 Read:
 
 - The job file.
+- `documents/profile/01-candidate-profile.md` and approved shared evidence for
+  all factual claims; resolve conflicts before drafting.
 - `documents/china/profile/candidate.md`
 - `documents/china/profile/preferences.md`
 - `documents/china/profile/evidence.md`
+
+The China files supply local preferences, translations and evidence pointers.
+Do not take an unverified China-only fact as an independent source of truth.
 - `markets/china/templates/boss-greeting.md`
 - `markets/china/templates/recruiter-message.md`
 - `markets/china/templates/chinese-cover-letter.md`
@@ -112,7 +126,9 @@ There are two output modes:
 
 Use the selected `<slug>` from the preflight in Step 0. If its action was
 `refresh_open`, confirm the existing pack belongs to the same saved JD before
-replacing it; keep a previous pack if its source cannot be verified. Never
+replacing it; keep a previous pack if its source cannot be verified. With
+`resume_draft`, leave the existing pack in place and use its already reviewed
+contents for Step 5; ask the user before making any new revision. Never
 replace an older application pack. Keep this exact slug for the pack,
 full-document filenames and application archive. Write
 `markets/china/jobs/evaluated/<slug>-application.md`:
@@ -121,6 +137,7 @@ full-document filenames and application archive. Write
 # Application Pack: <Role> @ <Company>
 
 **Source:** <job file>
+**Source SHA256:** <source_sha256 from Step 0>
 **Date:** YYYY-MM-DD
 
 ## Supported Positioning

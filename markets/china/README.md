@@ -29,7 +29,8 @@ $job-search interview --market china markets/china/jobs/evaluated/<job>.md
 5. 运行 `$job-search analyze --market china <file>` 判断是否值得沟通或投递。
 6. 对值得推进的岗位运行 `$job-search apply --market china <file>`，生成打招呼话术、招聘者私信、
    中文求职信/邮件和简历修改建议。
-7. 面试前运行 `$job-search interview --market china <file>` 准备常见问题、STAR/CAR 答案和反问问题。
+7. 面试前运行 `$job-search interview --market china <file>`；从 tracker 选中这一次申请，
+   根据它的 JD、实际发送的材料和既往面试记录准备答案。
 
 长期申请状态可以继续记录在仓库根目录的 `job_search_tracker.csv`。
 
@@ -43,7 +44,8 @@ $job-search interview --market china markets/china/jobs/evaluated/<job>.md
 - 不绕过登录、验证码、反爬或访问限制。
 - 自动读取失败时，退回到手动补全 JD。
 - 不高频批量采集岗位。
-- 不生成无法由 `documents/china/profile/evidence.md` 或 profile 文件支撑的经历陈述。
+- 不生成无法由 `documents/profile/` 中经确认的事实支撑的经历陈述；
+  `documents/china/profile/` 仅补充中文表达、市场偏好和事实来源指针。
 - 对缺失技能或经验要明确标记为 gap，不能包装成已有经验。
 
 ## 写作规范（中文标点）

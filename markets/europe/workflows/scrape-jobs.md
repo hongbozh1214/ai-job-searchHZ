@@ -7,3 +7,6 @@
 5. Record source, canonical URL, country, location/remote status, posting language, required languages, authorization/sponsorship wording, contract type, deadline, and salary as stated.
 6. Deduplicate and apply hard gates before fit scoring.
 7. Save new full JDs under `markets/europe/jobs/inbox/` and evaluation reports under `markets/europe/jobs/evaluated/`; archive older files under `markets/europe/jobs/archived/`. These and any files directly beneath `jobs/` are gitignored personal data. Write `"market": "europe"` on every corresponding `job_scraper/seen_jobs.json` entry, and report sources that were blocked or incomplete. Never omit or infer this field: `/rank --market europe` uses it as the state-isolation boundary.
+8. When a URL already exists under Finland, follow the shared scraper's
+   `register-market` step; preserve the existing key and Finland score, then
+   let Europe `/rank` evaluate it separately.

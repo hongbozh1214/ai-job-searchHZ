@@ -37,6 +37,9 @@ tracked templates/rules: use them only for initialization and methodology, and
 never write personal data into them. `documents/profile/` is the factual source of
 truth; market files may add translated wording and market preferences but may not
 contradict shared facts.
+When a China conversation supplies new experience, metrics or skills, update the
+shared local profile first; then reconcile localized wording in the China files.
+Treat older China-only facts as unverified until the candidate resolves them.
 
 ## Route the operation
 

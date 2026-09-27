@@ -8,9 +8,10 @@ prevents personal data from being committed to a public repo:
 - `markets/china/profile/` — **templates**, tracked in git. Read-only for end
   users. They define the structure (section headings, China-specific fields
   like 薪资口径 / 五险一金 / 试用期 / 不接受外包) and serve as the starting point.
-- `documents/china/profile/` — **your personal data**, gitignored via
-  `documents/*/profile/**`. This is where the user's actual candidate,
-  preferences, and evidence live.
+- `documents/china/profile/` — **local China wording and preferences**, gitignored
+  via `documents/*/profile/**`. The canonical identity, experience, skills,
+  dates and evidence live in `documents/profile/`; these China files may retain
+  localized summaries and evidence pointers, never independent factual updates.
 
 **Never edit files under `markets/china/profile/`. Only edit files under
 `documents/china/profile/`.** If you find yourself wanting to change a template
@@ -45,9 +46,13 @@ Read these personal files once:
 - `documents/china/profile/preferences.md`
 - `documents/china/profile/evidence.md`
 
-Also read `documents/profile/CLAUDE.md` and `documents/profile/01-candidate-profile.md`
-if they contain populated profile data. Use them as references, not as files to
-edit.
+Read `documents/profile/01-candidate-profile.md`, `02-behavioral-profile.md`, and
+the local profile notes (`CLAUDE.md`) when present. The shared profile is the
+factual authority. A first-time China setup also initializes missing shared
+profile files through `.claude/commands/setup.md` before accepting candidate
+facts. If a populated China file has an extra or contradictory claim, present a
+field-by-field comparison for the user's decision; never silently promote it
+to the shared profile, replace it, or claim it is verified.
 
 ## Step 3: Detect Gaps
 
@@ -70,11 +75,15 @@ If many sections are empty, ask the user whether to proceed by:
 
 ## Step 4: Build Or Update Profile
 
-When the user provides information, update only the personal files:
+When the user provides new or corrected candidate facts, update the shared
+gitignored `documents/profile/01-candidate-profile.md` (or the appropriate
+shared behavioral/STAR file) **first**, after asking about any conflict. Then
+update only the relevant localized wording, evidence pointers and China-specific
+preferences in the gitignored market files:
 
-- `documents/china/profile/candidate.md`
+- `documents/china/profile/candidate.md` (translated summary; do not introduce facts)
 - `documents/china/profile/preferences.md`
-- `documents/china/profile/evidence.md`
+- `documents/china/profile/evidence.md` (references and wording linked to shared evidence)
 
 Keep Chinese market wording practical and specific. Do not add claims that the
 user has not supplied or that are not supported by source material.
@@ -89,6 +98,9 @@ Before finishing, verify:
 - Work schedule, social insurance, probation, outsourcing / labor dispatch, and
   availability preferences are either filled in or explicitly marked as undecided.
 - Every major claimed strength has evidence.
+- The shared profile contains each approved factual change, and China-only
+  wording agrees with it. If a China file differs, leave the disputed text
+  untouched but mark it as requiring confirmation; do not draft from it.
 - Unsupported claims are moved to `需要补充证据的内容` or `不应声称的内容`.
 
 ## Step 6: Present Summary

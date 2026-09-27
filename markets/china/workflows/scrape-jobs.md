@@ -24,6 +24,8 @@ Read:
 
 - `documents/china/profile/preferences.md`
 - `documents/china/profile/candidate.md`
+- `documents/profile/01-candidate-profile.md` for verified candidate facts;
+  China candidate/evidence notes are localized views, not independent facts.
 - `markets/china/search-queries.md`
 - `.agents/skills/linkedin-search/SKILL.md` when that skill is installed and enabled
 - `job_search_tracker.csv` if it exists

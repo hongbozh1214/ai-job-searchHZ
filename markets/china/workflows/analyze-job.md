@@ -19,9 +19,14 @@ the JD under `markets/china/jobs/inbox/` or provide a valid path.
 Read:
 
 - The job file.
+- `documents/profile/01-candidate-profile.md` for candidate facts and evidence.
 - `documents/china/profile/candidate.md`
 - `documents/china/profile/preferences.md`
 - `documents/china/profile/evidence.md`
+
+Treat China notes as localized wording or evidence pointers. If they claim a
+different degree, date, skill or achievement from the shared profile, request
+clarification and leave that claim out of scoring until confirmed.
 
 If profile files are still sparse, continue only if the job can be evaluated
 honestly. Otherwise ask the user to run `$job-search setup --market china` first.

@@ -233,6 +233,59 @@ class Candidates(RankStateCase):
         self.assertIn("--market", proc.stderr)
 
 
+class SharedEuropeFinlandPosting(RankStateCase):
+    def test_registration_and_rank_keep_independent_market_results(self):
+        url = "https://example.com/job"
+        self.write_state({"shared": entry(status="ranked", rank_score=83,
+                                          location_verdict="PASS", language_gate="PASS",
+                                          market_gates={"mobility": {"verdict": "PASS"}})})
+        registered = self.run_tool("register-market", "--market", "finland", "--url", url + "/")
+        self.assertTrue(registered["added"])
+        self.assertEqual(registered["markets"], ["europe", "finland"])
+        self.assertFalse(self.run_tool("register-market", "--market", "finland", "--url", url)["added"])
+        selected = self.run_tool("candidates", "--market", "finland", "--tracker", str(self.tmp / "missing.csv"))
+        self.assertEqual([r["key"] for r in selected["selected"]], ["shared"])
+        self.assertEqual(self.run_tool("candidates", "--market", "europe", "--tracker", str(self.tmp / "missing.csv"))["eligible"], 0)
+
+        results = self.tmp / "results.json"
+        results.write_text(json.dumps([{
+            "key": "shared", "status": "scored",
+            "scores": {"technical": 50, "experience": 50, "behavioral": 50, "career": 50},
+            "location_verdict": "FAIL", "language_gate": "FLAG", "language_note": "Finnish required",
+            "market_gates": {gate: {"verdict": "PASS"} for gate in
+                             ("authorization", "contract", "compensation", "qualifications")},
+        }]), encoding="utf-8")
+        ranked = self.run_tool("apply", "--market", "finland", "--results", str(results))
+        self.assertEqual(len(ranked["vetoed"]), 1)
+        saved = self.read_state()["shared"]
+        self.assertEqual(saved["market"], "europe")
+        self.assertEqual(saved["status"], "ranked")
+        self.assertEqual(saved["rank_score"], 83)
+        self.assertEqual(saved["market_gates"]["mobility"]["verdict"], "PASS")
+        self.assertEqual(saved["market_rankings"]["finland"]["rank_score"], 50)
+        self.assertEqual(saved["market_rankings"]["finland"]["location_verdict"], "FAIL")
+
+    def test_expiry_in_secondary_market_does_not_change_primary_ranking(self):
+        self.write_state({"shared": entry(status="ranked", deadline="2026-09-01",
+                                          markets=["europe", "finland"],
+                                          market_rankings={"finland": {"status": "ranked", "rank_eligible": True}})})
+        self.run_tool("sweep", "--market", "finland", "--write")
+        saved = self.read_state()["shared"]
+        self.assertEqual(saved["status"], "ranked")
+        self.assertEqual(saved["market_rankings"]["finland"]["status"], "expired")
+        self.assertEqual(self.run_tool("candidates", "--market", "finland", "--tracker", str(self.tmp / "missing.csv"))["eligible"], 0)
+        self.assertEqual(self.run_tool("candidates", "--market", "finland", "--all", "--tracker", str(self.tmp / "missing.csv"))["eligible"], 1)
+
+    def test_registration_refuses_ambiguous_or_untagged_urls(self):
+        self.write_state({"one": entry(market=None)})
+        proc = subprocess.run([sys.executable, str(TOOL), "register-market", "--market", "finland",
+                               "--url", "https://example.com/job", "--state", str(self.state)],
+                              capture_output=True, text=True)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("cannot infer", proc.stderr)
+        self.assertIsNone(self.read_state()["one"]["market"])
+
+
 class Sweep(RankStateCase):
     def test_retires_past_deadlines_and_flags_the_closing_ones(self):
         self.write_state(

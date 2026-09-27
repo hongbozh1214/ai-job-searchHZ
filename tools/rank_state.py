@@ -16,6 +16,7 @@ This moves the state-file traffic into code. Four subcommands:
   apply        write scoring results back to seen_jobs.json and print the
                ranked/vetoed/expired rows Step 5's report is built from
   import-local ingest complete China inbox JDs offline before candidate selection
+  register-market associate an already seen Europe/Finland URL with another market
 
 Selection and projection follow Step 1's existing rules exactly (status
 filter, tracker exclusion, focus filter, `--limit`/`--all`); the write-back
@@ -63,6 +64,9 @@ DEFAULT_LIMIT = 10
 URGENT_DAYS = 7
 ISO = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MARKETS = ("china", "europe", "finland")
+RANK_FIELDS = ("status", "rank_score", "rank_verdict", "rank_date", "location_verdict",
+               "language_gate", "language_note", "location_note", "market_gates",
+               "rank_eligible", "strengths", "gaps", "deadline")
 INBOX = ROOT / "markets" / "china" / "jobs" / "inbox"
 REQUIRED_GATES = {
     "china": ("compensation", "work_schedule", "employment_type", "social_insurance", "role_type", "qualifications"),
@@ -97,6 +101,42 @@ def save_state(path: Path, doc: dict) -> None:
     except BaseException:
         Path(tmp).unlink(missing_ok=True)
         raise
+
+
+def entry_markets(entry: dict) -> list[str]:
+    primary = entry.get("market")
+    others = entry.get("markets")
+    if not primary:
+        return []  # legacy records need explicit provenance; never infer it
+    if not isinstance(others, list):
+        return [primary]
+    return list(dict.fromkeys([primary, *(m for m in others if isinstance(m, str))]))
+
+
+def market_view(entry: dict, market: str) -> dict:
+    """Legacy top-level ranking belongs only to its original market."""
+    if entry.get("market") == market:
+        return entry
+    view = {k: v for k, v in entry.items() if k not in RANK_FIELDS}
+    view["deadline"] = entry.get("deadline")  # shared posting fact until this market verifies a replacement
+    if view.get("location") in ("PASS", "FAIL", "FLAG"):
+        view.pop("location")  # legacy verdict from the other market
+    overlay = entry.get("market_rankings") or {}
+    if not isinstance(overlay, dict):
+        raise ValueError("market_rankings must be an object")
+    saved = overlay.get(market, {})
+    if not isinstance(saved, dict):
+        raise ValueError("market ranking must be an object")
+    view.update(saved)
+    view.setdefault("status", "new")
+    return view
+
+
+def save_market_view(entry: dict, market: str, view: dict) -> None:
+    if entry.get("market") == market:
+        return  # view is the actual legacy entry
+    rankings = entry.setdefault("market_rankings", {})
+    rankings[market] = {name: view[name] for name in RANK_FIELDS if name in view}
 
 
 def parse_iso(value) -> date | None:
@@ -163,21 +203,21 @@ def cmd_candidates(args) -> int:
     excluded = tracker_pairs(args.tracker)
 
     selected, skipped_tracker, skipped_market, unknown_market, awaiting_local_jd = [], 0, 0, 0, 0
-    for key, entry in seen.items():
+    for key, stored in seen.items():
+        if args.market:
+            if not stored.get("market"):
+                unknown_market += 1
+                continue
+            if args.market not in entry_markets(stored):
+                skipped_market += 1
+                continue
+        entry = market_view(stored, args.market)
         status = entry.get("status")
         if args.all:
             if status == "skipped":
                 continue
         elif status != "new":
             continue
-        if args.market:
-            entry_market = entry.get("market")
-            if not entry_market:
-                unknown_market += 1
-                continue
-            if entry_market != args.market:
-                skipped_market += 1
-                continue
         known_sources = excluded.get((norm(entry.get("company")), norm(entry.get("title"))))
         candidate_url = str(entry.get("url") or "").rstrip("/")
         if known_sources is not None and (not candidate_url or not known_sources - {""} or
@@ -247,17 +287,17 @@ def cmd_sweep(args) -> int:
 
     expired, closing, unparseable, checked = [], [], [], 0
     skipped_market, unknown_market = 0, 0
-    for key, entry in seen.items():
-        if entry.get("status") != "ranked" or key in exclude:
-            continue
+    for key, stored in seen.items():
         if args.market:
-            entry_market = entry.get("market")
-            if not entry_market:
+            if not stored.get("market"):
                 unknown_market += 1
                 continue
-            if entry_market != args.market:
+            if args.market not in entry_markets(stored):
                 skipped_market += 1
                 continue
+        entry = market_view(stored, args.market)
+        if entry.get("status") != "ranked" or key in exclude:
+            continue
         checked += 1
         raw = entry.get("deadline")
         if raw in (None, ""):
@@ -280,7 +320,10 @@ def cmd_sweep(args) -> int:
 
     if args.write and expired:
         for row in expired:
-            seen[row["key"]]["status"] = "expired"
+            stored = seen[row["key"]]
+            view = market_view(stored, args.market)
+            view["status"] = "expired"
+            save_market_view(stored, args.market, view)
         save_state(args.state, doc)
 
     print(
@@ -450,6 +493,33 @@ def cmd_import_local(args) -> int:
     return 1 if errors else 0
 
 
+def cmd_register_market(args) -> int:
+    """A URL discovered in a second market is one posting with two score states."""
+    if args.market not in ("europe", "finland"):
+        sys.exit("register-market supports Europe/Finland overlap only")
+    url = args.url.strip().rstrip("/")
+    if not url:
+        sys.exit("a source URL is required to identify an existing posting")
+    doc, seen = load_state(args.state)
+    matches = [(key, value) for key, value in seen.items() if isinstance(value, dict)
+               and (value.get("url") or "").strip().rstrip("/") == url]
+    if len(matches) != 1:
+        sys.exit("source URL must identify exactly one stored posting; review duplicates manually")
+    key, entry = matches[0]
+    original = entry.get("market")
+    if original not in ("europe", "finland") or args.market not in ("europe", "finland"):
+        sys.exit("cannot infer a market for an untagged or China posting")
+    markets = entry_markets(entry)
+    changed = args.market not in markets
+    if changed:
+        entry["markets"] = markets + [args.market]
+        save_state(args.state, doc)
+    print(json.dumps({"key": key, "market": args.market, "markets": entry_markets(entry),
+                      "added": changed, "status": market_view(entry, args.market)["status"]},
+                     ensure_ascii=False))
+    return 0
+
+
 def cmd_apply(args) -> int:
     doc, seen = load_state(args.state)
     today = args.today
@@ -468,24 +538,25 @@ def cmd_apply(args) -> int:
             errors.append({"key": None, "error": "result must be an object"})
             continue
         key = result.get("key")
-        entry = seen.get(key) if isinstance(key, str) else None
-        if entry is None:
+        stored = seen.get(key) if isinstance(key, str) else None
+        if stored is None:
             errors.append({"key": key, "error": "no such key in seen_jobs.json"})
             continue
         if args.market:
-            entry_market = entry.get("market")
+            entry_market = stored.get("market")
             if not entry_market:
                 errors.append({
                     "key": key,
                     "error": f"entry has no market; cannot apply a {args.market} ranking",
                 })
                 continue
-            if entry_market != args.market:
+            if args.market not in entry_markets(stored):
                 errors.append({
                     "key": key,
                     "error": f"entry belongs to market '{entry_market}', not '{args.market}'",
                 })
                 continue
+        entry = market_view(stored, args.market)
 
         # A fresh deadline overrides the stored one; an absent deadline does
         # not erase a known date. Never let even a high score revive a closed job.
@@ -498,6 +569,7 @@ def cmd_apply(args) -> int:
             entry["status"] = "expired"
             if fresh_deadline:
                 entry["deadline"] = fresh_deadline
+            save_market_view(stored, args.market, entry)
             expired.append(
                 {"key": key, "title": entry.get("title"), "company": entry.get("company"),
                  "url": entry.get("url"), "deadline": entry.get("deadline")}
@@ -542,6 +614,7 @@ def cmd_apply(args) -> int:
             value = result.get(field)
             if isinstance(value, list):
                 entry[field] = [str(b) for b in value][:3]
+        save_market_view(stored, args.market, entry)
 
         parsed = parse_iso(entry.get("deadline"))
         rows.append(
@@ -640,6 +713,10 @@ def main() -> int:
     local.add_argument("--inbox", type=Path, default=INBOX)
     local.add_argument("--file", type=Path, action="append", help="one inbox Markdown file; repeat for multiple files")
     local.set_defaults(func=cmd_import_local)
+
+    register = sub.add_parser("register-market", parents=[common], help="tag a known Europe/Finland URL for ranking in the other market")
+    register.add_argument("--url", required=True, help="existing canonical posting URL")
+    register.set_defaults(func=cmd_register_market)
 
     args = ap.parse_args()
     if args.command == "import-local" and args.market != "china":

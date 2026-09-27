@@ -134,7 +134,7 @@ claims.*
 *Before creating any draft, choose `<company>_<role>` as the **selected file slug**
 for this application by running
 `python3 tools/application_key.py --company "<company>" --role "<role>" --market "<market>" --url "<source URL>"`
-(omit `--url` when none is known). The tool reads the tracker and existing
+(omit `--url` when none is known; for China also pass `--job-file "markets/china/jobs/inbox/<saved-JD>.md"`). The tool reads the tracker and existing
 archive but writes nothing. It implements the **Subfolder naming** rule in
 `documents/README.md` for Europe/Finland and the China posting-key rule for
 China by the same rule `/outcome` Step 1.4 uses. If it fails because an
@@ -145,7 +145,10 @@ already exists, so the new tracker row, CV, cover letter, PDFs/text and archive
 all get a dated, unused slug. Do not reuse the closed application's CV or
 archive, even when its URL is identical. Keep the selected slug in context and
 use it for **all** generated paths and Step 6b. Never change it after a draft
-has been written. A missing URL with ambiguous earlier applications is an
+has been written. For China, `resume_draft` means a saved application pack has
+the same verified inbox JD but no tracker row: keep the pack intact, complete
+any missing steps and record that slug, following the China apply workflow.
+A missing URL with ambiguous earlier applications is an
 error requiring clarification, not a cue to pick an older folder.*
 
 ### CV (`cv/main_<company>_<role><CV_EXT>`)

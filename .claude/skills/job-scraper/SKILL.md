@@ -5,7 +5,7 @@ description: >
   (LinkedIn, local job boards, and any skills added with /add-portal). Deduplicates
   across runs. Triggers on: job scrape, find jobs, search jobs, new jobs, job search,
   scrape jobs, /scrape
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash(bun --version), Bash(bun run .agents/skills/*/cli/src/cli.ts *), Bash(python tools/job_key.py:*), Bash(python3 tools/job_key.py:*), WebFetch, WebSearch, Agent, AskUserQuestion
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(bun --version), Bash(bun run .agents/skills/*/cli/src/cli.ts *), Bash(python tools/job_key.py:*), Bash(python3 tools/job_key.py:*), Bash(python3 tools/rank_state.py:*), WebFetch, WebSearch, Agent, AskUserQuestion
 ---
 
 # Job Scraper
@@ -125,9 +125,16 @@ site for the role and store that URL instead, or drop the candidate rather than 
 fragment link.
 
 For every candidate:
-- Skip if the URL matches any existing `seen_jobs.json` entry, regardless of
-  that entry's key. This preserves dedup continuity for postings stored under
-  the pre-helper key rule while new entries use the canonical key from Step 4.
+- If the URL matches any existing `seen_jobs.json` entry, do not create a
+  duplicate key. If the original market is Europe or Finland and this run
+  selected the *other* of those markets, register that exact URL with
+  `python3 tools/rank_state.py register-market --market "<selected-market>" --url "<URL>"`.
+  The command requires exactly one existing record with a known market and
+  preserves its old ranking. If it refuses, report the conflict for manual
+  review; never retag the row by hand. Continue the search and allow the
+  second market's `/rank` to evaluate it under its own gates. For a duplicate
+  within the same market, skip as usual. China JDs require their saved local
+  input and must not be cross-registered this way.
 - For a matching company+title in `seen_jobs.json`, skip only when the source
   URLs are the same or the new result has no URL and cannot be disambiguated.
   Different known URLs are distinct postings; verify a shared requisition ID or
@@ -178,7 +185,11 @@ stable URL suffix. Use that key to store and rank the second posting. If either
 URL is missing, require manual disambiguation instead of silently replacing the
 old entry. Deduplicate against actual URLs before generating a collision key.
 
-2. Add ALL fetched jobs (new and skipped) to `seen_jobs.json` with structure:
+2. Add new jobs and same-market skipped jobs to `seen_jobs.json` with the
+structure below. A duplicate URL registered from the other Europe/Finland
+market is **already stored**: keep its entire existing object unchanged apart
+from the helper's `markets` addition; do not recreate it with the second
+market's `market` or a fresh `status`.
 ```json
 {
   "seen": {
@@ -203,7 +214,13 @@ The `portal` field records which CLI skill produced the job (results are already
 
 The `source` field records which mechanism produced the entry: `cli` for Step 1b portal-CLI output, `websearch` for the Step 1c fallback. This is what keeps a ghost-job report diagnosable after the run's summary is gone: a stored entry whose URL later resolves to nothing (or to a different job) reads very differently depending on whether it came from live CLI output or from a search index that can be weeks stale - and a presented job with no entry here at all points at fabrication, which Rule 1 forbids. Entries written before this field existed lack it; never backfill it - the mechanism was not recorded.
 
-The `market` field is the explicit market selected for this scrape: `china`, `europe`, or `finland`. It is required on every new or skipped entry and is consumed by `/rank` to prevent one market's jobs being scored with another market's rules. Entries predating this field remain untagged and are reported by the rank state tool as `unknown_market`; never infer or bulk-backfill their market from a portal, language, or location.
+The `market` field is the **original** explicit market for this posting. When the
+same URL appears in Europe and Finland, the registration helper adds `markets`
+with both markets. Do not change the original `market`, `status`, or ranking on
+rediscovery; `market_rankings.<second market>` is written by `/rank`. Entries
+predating `market` remain untagged and are reported by the rank state tool as
+`unknown_market`; never infer or bulk-backfill their market from a portal,
+language, or location.
 
 `/rank` extends this schema additively: ranked entries also carry `rank_score` (0–100 overall score), `rank_verdict` (fit band, e.g. "strong fit"), `rank_date` (ISO date of ranking), the veto fields `location_verdict` and `language_gate` (both PASS/FAIL/FLAG) with `language_note` (the quoted requirement explaining a non-PASS), and `strengths`/`gaps` (1-3 verbatim bullets each, copied from the scoring agent's findings). The `status` field is set to `"ranked"`. Do not drop any of these fields when re-writing entries. Entries ranked before `strengths`/`gaps` existed simply lack them; readers tolerate their absence and never backfill by guessing. Entries ranked before the verdict rename may carry a legacy PASS/FAIL/FLAG string in `location` - read that as the verdict when `location_verdict` is absent; in fresh entries `location` is always a place, never a verdict.
 
