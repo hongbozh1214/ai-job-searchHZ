@@ -3,6 +3,17 @@
 You are creating China-market application material for a manually saved job
 description. Do not contact the employer or operate any job platform.
 
+**Mode and shared rules:** The default is a text application pack. For text
+mode, follow this workflow and run `python3 tools/apply_record.py` to load the
+shared tracker/archive Step 6b rules from `.claude/commands/apply.md`; the
+helper prints only that section. Follow both sets of rules when recording the
+draft, including the common header, open/final statuses and archive identity.
+If the user explicitly requests generated CV and cover-letter files, read the
+entire shared `/apply` workflow before drafting those documents; its factual,
+reviewer, compile, PDF and final-verification steps apply. An approved switch
+to full documents later in the conversation follows the same rule. Do not
+repeat the helper call after reading the full shared workflow.
+
 ## Step 0: Parse Input
 
 `$ARGUMENTS` may contain:
@@ -182,7 +193,9 @@ files out of git-tracked template paths.
 ## Step 5: Record Draft and Present Result
 
 After the pack and any requested documents pass their applicable checks, run
-the shared `.claude/commands/apply.md` Step 6b **before ending the turn**:
+the shared `.claude/commands/apply.md` Step 6b **before ending the turn**.
+For text mode use the exact section printed by `python3 tools/apply_record.py`;
+for full documents it is already present in the complete shared workflow:
 
 - Create or update the normal `job_search_tracker.csv` row with `status: drafted`;
   never record it as sent/applied without the user's explicit confirmation.

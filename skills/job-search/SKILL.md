@@ -48,7 +48,18 @@ Treat older China-only facts as unverified until the candidate resolves them.
 - `scrape`: read `.claude/skills/job-scraper/SKILL.md`, then `markets/<market>/workflows/scrape-jobs.md`. Invoke only sources enabled for the selected market. Do not run every installed portal.
 - `analyze`: for China, follow `markets/china/workflows/analyze-job.md`; for Europe or Finland, assess the supplied posting against the shared candidate evidence and `markets/<market>/evaluation.md` without changing ranking state.
 - `rank`: read `.claude/commands/rank.md` plus the selected market's evaluation rules. Pass the resolved market to every `tools/rank_state.py` invocation via `--market`; never rank or sweep entries from another or unknown market. For China also follow `markets/china/workflows/rank-jobs.md` and keep canonical `job_scraper/seen_jobs.json` state synchronized as that workflow specifies.
-- `apply`: read `.claude/commands/apply.md` plus the selected market's application conventions. For China also follow `markets/china/workflows/apply-job.md`. Draft only; never submit or send without a separate explicit authorization.
+- `apply`: resolve China output mode **before reading the application guides**.
+  China defaults to a text pack: read `markets/china/workflows/apply-job.md`
+  and run `python3 tools/apply_record.py` for the exact shared tracker/archive
+  Step 6b rules. Use that returned section as the only shared `/apply` content;
+  do not read the entire `.claude/commands/apply.md`, CV/cover-letter guides,
+  reviewer instructions or PDF checks for text mode. If the candidate
+  explicitly requests full CV and cover-letter files, read the complete
+  `.claude/commands/apply.md` and the China workflow, including its full-document
+  checks. If the request changes to full documents mid-run, load the full rules
+  before drafting files and keep the selected posting slug. For Europe/Finland,
+  read `.claude/commands/apply.md` plus the selected market's conventions.
+  Draft only; never submit or send without a separate explicit authorization.
 - `interview`: read `.claude/commands/interview.md`. For China also follow `markets/china/workflows/interview-prep.md`.
 - `outcome`, `expand`, `upskill`, and `html-report`: follow the corresponding canonical file under `.claude/commands/` or `.claude/skills/`, then apply the selected market overlay where relevant.
 
