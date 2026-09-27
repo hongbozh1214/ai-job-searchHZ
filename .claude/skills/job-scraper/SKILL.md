@@ -5,7 +5,7 @@ description: >
   (LinkedIn, local job boards, and any skills added with /add-portal). Deduplicates
   across runs. Triggers on: job scrape, find jobs, search jobs, new jobs, job search,
   scrape jobs, /scrape
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash(bun --version), Bash(bun run .agents/skills/*/cli/src/cli.ts *), Bash(python tools/job_key.py:*), Bash(python3 tools/job_key.py:*), Bash(python3 tools/rank_state.py:*), WebFetch, WebSearch, Agent, AskUserQuestion
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(bun --version), Bash(bun run .agents/skills/*/cli/src/cli.ts *), Bash(python tools/job_key.py:*), Bash(python3 tools/job_key.py:*), Bash(python3 tools/rank_state.py:*), Bash(python3 tools/scrape_state.py:*), Bash(python3 tools/portal_catalog.py:*), WebFetch, WebSearch, Agent, AskUserQuestion
 ---
 
 # Job Scraper
@@ -38,9 +38,12 @@ Optional arguments:
 
 ### Step 0: Load State
 
-1. Read `job_scraper/seen_jobs.json` (create if missing - start with `{"seen": {}}`)
-2. Read `job_search_tracker.csv` to extract already-applied source URLs and company+role pairs for ambiguous URL-less postings
-3. Read `documents/profile/search-queries.md` for the local search strategy. Use
+1. Keep `job_scraper/seen_jobs.json` and `job_search_tracker.csv` out of the
+   conversation. `tools/scrape_state.py` reads both when needed and creates
+   `{"seen": {}}` on the first successful write. Do not print or manually
+   rewrite either whole file. Use the compact `lookup` and `add` calls in Steps
+   2/4, including for China.
+2. Read `documents/profile/search-queries.md` for the local search strategy. Use
    `.claude/skills/job-scraper/search-queries.md` for query rules and examples.
    If the local strategy is missing, ask the user to run setup; initialize it
    from `profile-templates/search-queries.md`, never by copying the full guide.
@@ -65,11 +68,22 @@ If this fails (bun not installed), skip to **1c (WebSearch fallback)** for all p
 
 #### 1b. Run CLI tools (primary — run these in parallel where possible)
 
-Discover all installed portal CLI skills by reading every `SKILL.md` found under `.agents/skills/*/SKILL.md`. Each file documents that portal's exact CLI flags and usage examples. **Use each portal's own documented interface — do not guess flags.** This approach automatically includes any new portals added via `/add-portal` without requiring changes to this file.
+Discover installed portal skills from their short frontmatter only:
 
-**Honor the `enabled` toggle.** A portal is enabled unless its `SKILL.md` frontmatter sets `enabled: false` (a missing key means enabled — the default). Skip each disabled portal and record it for the Step 5 summary. A fork can thus keep a portal installed but sit out a run without deleting its directory.
+```bash
+python3 tools/portal_catalog.py
+```
 
-For each **enabled** portal skill:
+The JSON lists each skill's name, path and enabled flag; report disabled names
+without loading their full descriptions. Read the full `SKILL.md` **only** for
+enabled skills selected for this market, or for the one named portal in
+`/scrape health <portal>`. Its own documentation supplies exact CLI flags; do
+not guess them. A new `/add-portal` skill is picked up automatically.
+
+**Honor the `enabled` toggle.** Missing means enabled. Skip disabled portals
+in ordinary runs and record their names for the Step 5 summary.
+
+For each **selected enabled** portal skill:
 
 1. Read its `SKILL.md` to find the correct `bun run …` invocation and supported flags.
 2. Translate the query terms from `search-queries.md` into that portal's flag format (e.g. `--key`, `--search-string`, `--query`, filter codes — whatever the portal's SKILL.md specifies).
@@ -124,8 +138,26 @@ that entry. When WebSearch only yields a listing page, search the employer's own
 site for the role and store that URL instead, or drop the candidate rather than saving a
 fragment link.
 
+Before fetching full details where the search result has a usable company,
+title and URL, and again for any remaining candidates after extracting those
+fields, save just `{company,title,url}` objects in a temporary JSON array
+outside the repository. Query in one batch:
+
+```bash
+python3 tools/scrape_state.py lookup --input "<candidate-array.json>"
+```
+
+The result contains an `index` matching the array, `decision`, and only the
+relevant key/market/status or reason. `new` includes the canonical key (or a
+URL-specific collision key); `seen_url`, `tracked`, and `ambiguous` are never
+added. If `seen_url` belongs to the other Europe/Finland market, use the
+registration command below. Recheck immediately before saving in Step 4:
+`add` validates every entry against the current state again. If a candidate
+lacks a company or title, resolve it from the original posting first; never
+guess an identity from a snippet.
+
 For every candidate:
-- If the URL matches any existing `seen_jobs.json` entry, do not create a
+- If the URL matches any existing `seen_jobs.json` entry (`seen_url`), do not create a
   duplicate key. If the original market is Europe or Finland and this run
   selected the *other* of those markets, register that exact URL with
   `python3 tools/rank_state.py register-market --market "<selected-market>" --url "<URL>"`.
@@ -135,11 +167,11 @@ For every candidate:
   second market's `/rank` to evaluate it under its own gates. For a duplicate
   within the same market, skip as usual. China JDs require their saved local
   input and must not be cross-registered this way.
-- For a matching company+title in `seen_jobs.json`, skip only when the source
+- For a matching company+title in existing state, skip only when the source
   URLs are the same or the new result has no URL and cannot be disambiguated.
   Different known URLs are distinct postings; verify a shared requisition ID or
   canonical employer URL before deciding that two URLs represent one job.
-- For a matching company+role in `job_search_tracker.csv`, skip only when its
+- For a matching company+role in the application tracker, skip only when its
   `source` URL matches (ignoring a trailing slash), or when a missing URL makes
   the posting ambiguous. Different known URLs must not be dropped. Report
   ambiguous no-URL results for manual review rather than overwriting either.
@@ -171,7 +203,8 @@ visible without being auto-downgraded.
 
 ### Step 4: Deduplicate & Store
 
-1. Derive each entry's key with the helper, never by slugifying in the moment:
+1. Use the `key` returned by `tools/scrape_state.py lookup` for each `new`
+   result. It uses the same canonical helper:
 
 ```bash
 python3 tools/job_key.py --company "<company>" --title "<title>" --url "<url>"
@@ -179,17 +212,24 @@ python3 tools/job_key.py --company "<company>" --title "<title>" --url "<url>"
 
 It prints one line: the canonical key for that posting. The key must be a pure function of the posting, because two runs that slugify differently store the same job twice and defeat the dedup this step exists to provide. The helper also length-caps long titles and disambiguates the cap with a hash of the full slug, so a truncated title is stable across runs and two different long titles never collide. `python3 tools/job_key.py --audit` reports entries in an existing state file that predate this rule; it only reports, and never rewrites keys, since a rewritten key breaks the tracker's own company+role matching.
 
-If this key already belongs to a different known URL, keep the old entry intact
-and rerun the helper with `--collision` and the new URL. The output appends a
-stable URL suffix. Use that key to store and rank the second posting. If either
-URL is missing, require manual disambiguation instead of silently replacing the
-old entry. Deduplicate against actual URLs before generating a collision key.
+If the ordinary key already belongs to a distinct known URL, lookup selects
+the helper's stable `--collision` key. A missing URL or conflicting identity is
+`ambiguous`; resolve it manually before any write.
 
 2. Add new jobs and same-market skipped jobs to `seen_jobs.json` with the
-structure below. A duplicate URL registered from the other Europe/Finland
-market is **already stored**: keep its entire existing object unchanged apart
-from the helper's `markets` addition; do not recreate it with the second
-market's `market` or a fresh `status`.
+   following schema. Build a temporary JSON **array of new entries only** outside the repository,
+   each with `key` from lookup and the fields below. Add them in one call:
+
+```bash
+python3 tools/scrape_state.py add --input "<new-entries.json>"
+```
+
+The helper checks URLs, pair ambiguity, tracker exclusions and key collisions
+again before writing atomically, and prints only the keys added. If any entry
+conflicts, the entire batch is rejected; rerun `lookup` and reconcile, never
+overwrite existing rankings. For `seen_url` from the other Europe/Finland
+market, only register that market using Step 2's helper. Do not recreate the
+existing row or alter its primary ranking.
 ```json
 {
   "seen": {
@@ -228,7 +268,9 @@ language, or location.
 
 `posted_date` is the posting's own publication date, taken from the `date` field Step 2's contract already guarantees on every portal CLI's search output. Step 1b uses that date to scope the run to the last 14 days and then drops it, so nothing downstream can distinguish a posting published yesterday from one published two years ago - `first_seen` is when this scraper first saw the entry, not when the employer posted it. Persisting it makes Step 1b's window auditable after the run and gives `/rank` a freshness signal to weigh, instead of rediscovering the date and recording it in prose that nothing reads. That gap landed for real: a freehire-search posting dated 2024-05-13 was scraped and ranked Strong Fit at position 1 of 133, its own scoring note observing the listing "may be long stale" with nothing able to act on it. `null` means the portal returned no date for that result (the CLIs emit `date: null` when a listing omits it); a missing key means the entry predates this field - **never infer a posting date** from either, and never backfill by guessing.
 
-3. Only present postings not already in the seen list or tracker by exact URL; for URL-less postings with matching company+title, ask before presenting as new.
+3. Present only `added` postings and newly registered cross-market hits,
+   not already in the seen list or tracker by exact URL;
+   for URL-less ambiguous postings ask before presenting them as new.
 
 ### Step 4.5: Generate Referral Contact Links (High & Medium Fit Only)
 
@@ -261,7 +303,10 @@ Scraper-based portal CLIs rot silently: when a portal changes its markup, the pa
 **Free pass (no extra requests).** For each enabled portal that ran in Step 1b:
 
 - **Degraded scan:** inspect the results it returned this run. Flags: `company` null or empty on every result, empty titles, undecoded entities (`&amp;`) or HTML fragments in titles, URLs that do not point at the portal. Any of these means the parser is half-working and `/scrape` is silently collecting junk.
-- **Yield history:** if the portal returned zero results across all of this run's queries, check whether `seen_jobs.json` holds prior entries from it (via the `portal` field, or by matching URL domains for entries predating the field). A portal that produced jobs on earlier runs and produces nothing now is suspect - the same queries worked before.
+- **Yield history:** if a portal returned zero results, run
+  `python3 tools/scrape_state.py history --portal "<portal-name>" --domain "<portal-hostname>"`.
+  `previous_results` checks the saved portal field or, for older rows without
+  it, the URL hostname. A portal with prior results and none now is suspect.
 
 **Escalation (bounded, on suspicion only).** A suspect portal gets **one** sentinel probe: run its documented `search` with the example query from its own SKILL.md (that query provably worked when the skill was registered), the portal's limit flag capped at 3, `--format json`. If that returns nothing, retry **once** with a single common word. Only then is the verdict **broken**. A 429 or block page is **never** evidence of breakage - record the portal as **inconclusive (rate-limited)**, back off, and do not retry.
 

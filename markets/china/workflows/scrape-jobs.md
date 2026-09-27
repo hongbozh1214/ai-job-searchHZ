@@ -28,9 +28,9 @@ Read:
   China candidate/evidence notes are localized views, not independent facts.
 - `markets/china/search-queries.md`
 - `.agents/skills/linkedin-search/SKILL.md` when that skill is installed and enabled
-- `job_search_tracker.csv` if it exists
-- `job_scraper/seen_jobs.json` if it exists; create it if missing with
-  `{"seen": {}}`
+- Use the shared scraper's `tools/scrape_state.py lookup` for candidate
+  deduplication against the tracker and seen history. Keep both files out of
+  the conversation; the first `add` creates `{"seen": {}}` if needed.
 
 Use target roles, cities, industries, hard exclusions, salary minimums, and work
 mode preferences to build search terms.
@@ -198,10 +198,13 @@ Use this structure:
 
 ```
 
-Derive the canonical key with `python3 tools/job_key.py`, then add every new or
-skipped URL to `job_scraper/seen_jobs.json`. Do not create a second entry for a
-duplicate. Use the shared state contract, adding `market` and `fetch_status`
-without replacing canonical fields:
+The shared helper uses the canonical key from `tools/job_key.py`. Use
+`tools/scrape_state.py lookup` from the shared scraper before fetching
+details where possible, then send only `new` or `skipped` records to
+`tools/scrape_state.py add --input "<new-entries.json>"`. Keep its selected key
+on each record; the helper will refuse duplicates, ambiguous URLs or a tracker
+match without replacing existing fields. Add `market` and `fetch_status` to
+the shared state contract:
 
 ```json
 {
