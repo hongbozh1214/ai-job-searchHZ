@@ -16,6 +16,13 @@ framework_version: 1.3.5
 
 When the user provides a job posting (URL or text), follow this workflow:
 
+For a China application, route through `markets/china/workflows/apply-job.md`
+and the `$job-search apply --market china` rules; its default text pack and
+full-document CV language choice govern. The two-document flow below applies
+to Finland and Europe and defaults to an English CV even when the posting is
+not in English; a different CV language requires an explicit request for that
+application.
+
 Before starting, require the gitignored local profile under `documents/profile/`.
 If `documents/profile/01-candidate-profile.md` or
 `documents/profile/CLAUDE.md` is missing, stop and ask the user to run `/setup` (or

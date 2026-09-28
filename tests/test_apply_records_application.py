@@ -60,7 +60,7 @@ class ApplyRecordsApplication(unittest.TestCase):
     def test_step_writes_a_drafted_row_with_both_document_paths(self):
         for fragment in (
             "| `status` | `drafted` |",
-            '| `cv_file`, `cover_letter_file` | the two paths listed under "Files Created"',
+            '| `cv_file`, `cover_letter_file` | the selected CV source path and the cover-letter source path listed under "Files Created"',
         ):
             self.assertIn(
                 fragment,

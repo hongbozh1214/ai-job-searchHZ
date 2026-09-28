@@ -8,7 +8,6 @@ verification checklist live in the tracked root CLAUDE.md. Keep this file short.
 - **Location:** [YOUR_CITY], [YOUR_COUNTRY]
 - **Commute / work constraints:** [YOUR_CONSTRAINTS]
 - **Status / availability:** [YOUR_EMPLOYMENT_STATUS]
-- **CV language:** [YOUR_CV_LANGUAGE]
 - **LinkedIn headline:** [YOUR_LINKEDIN_HEADLINE]
 
 ### Languages

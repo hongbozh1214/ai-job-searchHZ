@@ -14,6 +14,14 @@ reviewer, compile, PDF and final-verification steps apply. An approved switch
 to full documents later in the conversation follows the same rule. Do not
 repeat the helper call after reading the full shared workflow.
 
+**China CV language choice (full documents only):** If the request already
+specifies English, Chinese or both, use that choice for this application. If it
+does not, ask before drafting the full CV: "中国市场这次要英文简历、中文简历，还是两种都要？"
+Wait for the answer; do not infer it from the JD language, a past application,
+or a legacy global `CV language:` profile field. This choice does not change
+the default text-pack route, which needs no CV language question. The cover
+letter still follows the posting language and is generated once.
+
 ## Step 0: Parse Input
 
 `$ARGUMENTS` may contain:
@@ -69,8 +77,11 @@ Do not take an unverified China-only fact as an independent source of truth.
 - `markets/china/templates/chinese-cover-letter.md`
 - `markets/china/templates/interview-answer.md`
 - For full-document mode only, the **local candidate CV baseline** at
-  `documents/profile/cv/main_example.tex` and the tracked structural guides
-  `cv/chinese/main_example.tex` and `cover_letters/chinese/cover_example.tex`.
+  `documents/profile/cv/main_example.tex`; use the English structure from
+  `cv/main_example.tex` for an English CV and the Chinese structure from
+  `cv/chinese/main_example.tex` for a Chinese CV. Read both when both are
+  requested. Use `cover_letters/chinese/cover_example.tex` for a Chinese
+  posting's letter; for an English posting use the English cover template.
 
 If an evaluation exists under `markets/china/jobs/evaluated/` for the same
 posting URL or posting-specific key, read it and use its score, strengths,
@@ -104,10 +115,10 @@ Produce:
 - 中文求职信/邮件: concise, role-specific, evidence-backed.
 - 简历修改建议: bullets to emphasize, bullets to remove, keywords to add only if
   evidence supports them.
-- 中文 LaTeX 简历/求职信生成建议: if the user explicitly asks for full `.tex`
-  files, use `cv/chinese/main_example.tex` and
-  `cover_letters/chinese/cover_example.tex` as structural references. Otherwise,
-  keep the output as targeted resume-editing guidance and a concise letter/email.
+- LaTeX 简历/求职信生成建议: if the user explicitly asks for full `.tex`
+  files, use the selected language's CV structure and the posting language's
+  cover-letter structure. Otherwise, keep the output as targeted
+  resume-editing guidance and a concise letter/email.
 - 面试准备重点: likely questions and evidence-backed answer angles.
 
 Tone:
@@ -124,14 +135,19 @@ There are two output modes:
   confirmation. Do not call the generic PDF compilation, PDF layout inspection,
   ATS extraction or two-document reviewer steps: there are no CV/cover files
   to inspect in this mode.
-- **Full documents (only on explicit request):** also draft the role-specific
-  CV and cover letter as `cv/chinese/main_<slug>.tex` and
-  `cover_letters/chinese/cover_<slug>.tex`. Use the shared `/apply` reviewer,
+- **Full documents (only on explicit request):** draft the role-specific CV in
+  the chosen language: English at `cv/main_<slug>.tex`, Chinese at
+  `cv/chinese/main_<slug>.tex`, or **both** at those two distinct paths. For a
+  Chinese posting write one `cover_letters/chinese/cover_<slug>.tex`; for an
+  English posting write one `cover_letters/cover_<slug>.tex`. Use the shared
+  `/apply` reviewer,
   factual guard, compile, page-count, visual inspection, ATS text-extraction
-  and final-verification steps for these real files. Compile with LuaLaTeX for
-  the CV and XeLaTeX for the cover letter unless a verified custom template
-  declares its own commands. Fix failures before claiming the PDFs are ready.
-  Do not replace tracked Chinese example templates with personal data.
+  and final-verification steps for **every** generated CV and the letter.
+  Compile each CV with LuaLaTeX from its own directory and the cover letter
+  with XeLaTeX from its own directory unless a verified custom template declares
+  its own commands. Fix failures before claiming the PDFs are ready. Keep the
+  two CVs factually consistent; the English version is not an automatic claim
+  translation. Do not replace tracked example templates with personal data.
 
 ## Step 4: Save Application Pack
 
@@ -213,7 +229,14 @@ for full documents it is already present in the complete shared workflow:
   on a text refresh. The marker points to the application pack, not a
   fictional CV or `.tex` cover letter.
 - In full-document mode, set `cv_file` and `cover_letter_file` to the actual
-  generated `.tex` files. Keep the pack path in notes for the greeting. If a
+  generated `.tex` files. For **both** CV languages, store the Chinese source
+  as primary `cv_file` and add `china_extra_cv:cv/main_<slug>.tex` to `notes`
+  for the English source. This is a draft option, not evidence of submission;
+  never put two paths in the single `cv_file` column. For English-only or
+  Chinese-only, use that one path and remove any obsolete `china_extra_cv:`
+  marker from the same open draft row. Keep all notes CSV-safe (no commas,
+  double quotes or line breaks). Keep the pack path in notes for the greeting.
+  If a
   prior text-only draft left a `china_text_pack:` marker on this same row,
   remove only that obsolete marker after writing the verified full documents;
   preserve the rest of the notes.

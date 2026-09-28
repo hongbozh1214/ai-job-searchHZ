@@ -56,9 +56,14 @@ Treat older China-only facts as unverified until the candidate resolves them.
   reviewer instructions or PDF checks for text mode. If the candidate
   explicitly requests full CV and cover-letter files, read the complete
   `.claude/commands/apply.md` and the China workflow, including its full-document
-  checks. If the request changes to full documents mid-run, load the full rules
-  before drafting files and keep the selected posting slug. For Europe/Finland,
-  read `.claude/commands/apply.md` plus the selected market's conventions.
+  checks. For China full documents, use an explicitly supplied CV language
+  (English, Chinese or both), or ask for that choice before drafting; do not
+  prompt for CV language in text-pack mode. If the request changes to full
+  documents mid-run, load the full rules before drafting files and keep the
+  selected posting slug. For Europe/Finland,
+  read `.claude/commands/apply.md` plus the selected market's conventions;
+  their CVs default to English; a different language requires an explicit
+  request for that application.
   Draft only; never submit or send without a separate explicit authorization.
 - `interview`: read `.claude/commands/interview.md`. For China also follow `markets/china/workflows/interview-prep.md`.
 - `outcome`, `expand`, `upskill`, and `html-report`: follow the corresponding canonical file under `.claude/commands/` or `.claude/skills/`, then apply the selected market overlay where relevant.

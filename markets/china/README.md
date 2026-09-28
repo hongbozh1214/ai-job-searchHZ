@@ -29,6 +29,8 @@ $job-search interview --market china markets/china/jobs/evaluated/<job>.md
 5. 运行 `$job-search analyze --market china <file>` 判断是否值得沟通或投递。
 6. 对值得推进的岗位运行 `$job-search apply --market china <file>`，生成打招呼话术、招聘者私信、
    中文求职信/邮件和简历修改建议。
+   如果明确要求生成完整 CV 与求职信文件，可同时说明简历语言：英文、中文或两种都要；
+   未说明时，生成文件前会询问。默认文字材料包无需选择 CV 语言。
 7. 面试前运行 `$job-search interview --market china <file>`；从 tracker 选中这一次申请，
    根据它的 JD、实际发送的材料和既往面试记录准备答案。
 

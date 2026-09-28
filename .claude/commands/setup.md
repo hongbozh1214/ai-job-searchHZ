@@ -415,7 +415,7 @@ Ask about:
 - **Target companies (optional):** "Are there specific companies you'd like to monitor for openings?"
 - **Geographic scope:** "Which cities or regions should I search in? How far are you willing to commute?" Use this to define the location filter tiers (ideal, acceptable, borderline, too far).
 - **Job portals:** "The framework ships country-agnostic search CLIs (`linkedin-search`, `freehire-search`, enabled by default) plus Danish portal demos (Jobindex, Jobbank, Jobdanmark, Jobnet) that ship **disabled**. `/scrape` auto-discovers whatever portal skills are installed under `.agents/skills/` and skips any with `enabled: false`. Which portals fit your market?" **Then act on the answer:** if the user's market is Denmark (or they ask for the Danish boards), edit each of the four Danish `SKILL.md` files and set `enabled: true` in the frontmatter; otherwise leave them disabled and say so - they cost nothing while disabled and can be enabled later by flipping the flag. If the user needs a local board that is not shipped, guide them to `/add-portal` (market-specific skills live in their fork). WebSearch/`site:` queries remain the fallback for portals without a CLI skill.
-- **CV language:** "Should your CVs be written in English (the default, accepted in most markets), or in your market's language?" Record the answer as a `CV language: <language>` line in `documents/profile/CLAUDE.md`'s Identity section. Cover letters always match each posting's language automatically; this setting governs the CV only. If the user is unsure, keep English and note they can re-run `/setup --section search` to change it.
+- **CV output language:** Do not collect a global CV-language preference. Finland and Europe application CVs default to English. When a China application requests full CV files, `/apply` asks for English, Chinese, or both for that application; setup does not preselect an answer. Cover letters follow the posting language.
 
 **Important:** Also suggest role types the user may not have considered, based on their skill profile. For example:
 - If they have strong Python + domain expertise: "Have you considered roles like 'Technical Consultant' or 'Solutions Engineer' in your domain?"
@@ -438,7 +438,7 @@ below. A `--section` update only touches the selected local fields and must not
 reinitialize or replace other populated files.
 
 ### 1. Update `documents/profile/CLAUDE.md`
-Fill the candidate's Identity (including the Languages table and CV language)
+Fill the candidate's Identity (including the Languages table)
 and Career Direction from `profile-templates/CLAUDE.md`. Keep this file concise;
 the root tracked `CLAUDE.md` holds workflow instructions and the verification
 checklist, and must not be copied into the local profile.
