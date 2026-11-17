@@ -6,6 +6,7 @@ The tests pin the boundaries that would otherwise regress silently.
 """
 
 import unittest
+import re
 from pathlib import Path
 
 
@@ -35,6 +36,44 @@ class MultiMarketRouterTests(unittest.TestCase):
             "interview-prep.md",
         ):
             self.assertIn(workflow, router)
+
+
+class MarketStrategySelectionTests(unittest.TestCase):
+    """Static market-selection contract; actual agent consumption is separate."""
+
+    def test_market_paths_and_overlays_select_personal_strategies(self):
+        skill = read(".claude/skills/job-scraper/SKILL.md")
+        selection = skill.split("### Step 0: Load State", 1)[1].split("### Step 1:", 1)[0]
+        routes = re.findall(
+            r"^\s*\| `(europe|finland)` \| `([^`]+)` \| `([^`]+)` \|",
+            selection, re.MULTILINE,
+        )
+        self.assertEqual(len(routes), 2)
+        for market, strategy, guide in routes:
+            with self.subTest(market=market):
+                self.assertEqual(strategy, f"documents/{market}/profile/search-queries.md")
+                self.assertEqual(guide, f"markets/{market}/search-queries.md")
+                overlay = read(f"markets/{market}/workflows/scrape-jobs.md")
+                self.assertIn(f"`{strategy}`", overlay)
+                self.assertIn("shared scraper's Step 0", overlay)
+        self.assertIn("Do not substitute the global strategy or the other market's strategy", selection)
+        self.assertIn("Stop that market", selection)
+        self.assertIn("ask if missing or ambiguous", selection)
+        self.assertIn("this table does not change China", selection)
+
+    def test_source_selection_and_summary_do_not_promote_history_to_acceptance(self):
+        skill = read(".claude/skills/job-scraper/SKILL.md")
+        self.assertIn("Use sources explicitly selected by the local strategy", skill)
+        self.assertIn("use the selected market's source guide as candidates", skill)
+        self.assertIn("A guide is not a command to run", skill)
+        self.assertIn("not-attempted sources remain unverified", skill)
+        self.assertIn("Historical evidence is not this run's acceptance", skill)
+        self.assertIn("broad does not enable every source", skill)
+        guide = read(".claude/skills/job-scraper/search-queries.md")
+        self.assertIn("canonical", guide)
+        self.assertIn("job-scraper Step 0", guide)
+        self.assertNotIn("runs its CLI first", guide)
+        self.assertNotIn("those CLIs to run", guide)
 
 
 class PersonalDataBoundaryTests(unittest.TestCase):

@@ -5,7 +5,7 @@
 // ("generic") gets a best-effort HTML scrape here, with a documented fallback to
 // WebFetch/WebSearch for JS-heavy or Cloudflare-protected sites (see SKILL.md).
 
-import { existsSync } from "node:fs"
+import { existsSync, realpathSync, statSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -59,7 +59,7 @@ export function classifyFailure(status: number | null, err?: unknown): string {
   return "unknown"
 }
 
-export type AtsType = "greenhouse" | "lever" | "smartrecruiters" | "oracle" | "generic"
+export type AtsType = "greenhouse" | "lever" | "smartrecruiters" | "oracle" | "generic" | "workday" | "ashby"
 
 export interface RegistryEntry {
   name: string
@@ -126,7 +126,26 @@ export function writeCaughtError(error: unknown, fallbackCode: string): void {
  * already has pinned tests (tests/test_robots_check.py), so there is exactly one
  * definition of what "the site permits this" means.
  */
-export const ROBOTS_CHECK_PY = path.join(REPO_ROOT, "tools", "robots_check.py")
+/** Prefer the installed layout's stable registry link for checker selection.
+ * An alternate data registry cannot displace that project. Preserve the existing
+ * exact direct-child override when the stable link is unavailable; never use an
+ * arbitrary registry's parent as a code root. */
+export function resolveRobotsChecker(repoRoot: string, registry: string, cwd: string = process.cwd()): string {
+  const root = realpathSync(repoRoot)
+  const fallback = path.join(root, "tools", "robots_check.py")
+  const child = path.join(root, "ai-job-search")
+  for (const candidate of [path.join(root, "company_pages.json"), path.resolve(cwd, registry)]) {
+    try {
+      const registryReal = realpathSync(candidate)
+      if (registryReal === path.join(child, "company_pages.json") && realpathSync(child) === child) {
+        return path.join(child, "tools", "robots_check.py")
+      }
+    } catch { /* Try only the existing bounded project hints. */ }
+  }
+  return fallback
+}
+
+export const ROBOTS_CHECK_PY = resolveRobotsChecker(REPO_ROOT, process.env.COMPANY_PAGES_REGISTRY || REGISTRY_PATH)
 
 /** Decides whether a browser-shaped request may be sent to `url`. */
 export type RobotsGate = (url: string) => Promise<boolean>
@@ -143,15 +162,33 @@ export async function robotsCheckPyGate(
   url: string,
   script: string = ROBOTS_CHECK_PY,
   python = "python3",
+  strict = false,
 ): Promise<boolean> {
-  if (!existsSync(script)) return false
+  if (!existsSync(script)) {
+    writeError(`Robots checker is unavailable: ${script}`, "ROBOTS_CHECKER_MISSING")
+    return false
+  }
+  // Production uses only the fixed project checker, never a link outside its project.
+  // Explicit script/python parameters remain the existing isolated-test seam.
+  if (script === ROBOTS_CHECK_PY) {
+    try {
+      const allowedRoot = realpathSync(path.dirname(path.dirname(script)))
+      const resolved = realpathSync(script)
+      const relative = path.relative(allowedRoot, resolved)
+      if (!relative || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative) || !statSync(resolved).isFile()) throw new Error("outside project")
+    } catch {
+      writeError(`Robots checker is unavailable or outside its project: ${script}`, "ROBOTS_CHECKER_UNSAFE")
+      return false
+    }
+  }
   const { execFile } = await import("node:child_process")
   const { promisify } = await import("node:util")
   const run = promisify(execFile)
   try {
-    await run(python, [script, url], { timeout: 30000, maxBuffer: 1024 * 1024 })
+    await run(python, [script, url, ...(strict ? ["--strict", "--user-agent", UA.split("/")[0]] : [])], { timeout: 30000, maxBuffer: 1024 * 1024 })
     return true // exit 0
   } catch {
+    writeError(`Robots checker refused or could not confirm permission: ${script}`, "ROBOTS_UNCONFIRMED")
     return false // non-zero exit, missing interpreter, or timeout
   }
 }

@@ -163,5 +163,138 @@ class SeenJobsDedupContinuityTests(unittest.TestCase):
         self.assertIn("not already in the seen list or tracker by exact URL", text)
 
 
+class PortalQuerySyntaxTests(unittest.TestCase):
+    """Static workflow contract adapted from upstream PR #653, not an agent run."""
+
+    def test_plain_terms_and_branch_specific_quoting_preserve_selection_and_budget(self):
+        text = SCRAPER_SKILL.read_text(encoding="utf-8")
+        step1b = text.split("#### 1b.", 1)[1].split("#### 1c.", 1)[0]
+        for required in (
+            "One plain term per CLI call", "`site:` expression, boolean `OR`",
+            "`Query syntax:`", "inside the argument the CLI receives",
+            "query_unconfirmed", "do not rewrite personal files",
+            "never multiply the budget per query", "not a live syntax probe",
+        ):
+            # Normalize case/whitespace so layout changes do not weaken the contract.
+            self.assertIn(required.lower(), " ".join(step1b.lower().split()))
+        company = (REPO_ROOT / ".agents/skills/company-pages-search/SKILL.md").read_text()
+        self.assertRegex(company, r"(?m)^Query syntax:.*literal title substring")
+        self.assertIn("server phrase quoting and boolean operators are unverified", company)
+        guide = (SCRAPER_SKILL.parent / "search-queries.md").read_text()
+        priorities = re.split(r"(?m)^### Priority \d+:", guide)[1:]
+        self.assertEqual(len(priorities), 4)
+        for priority in priorities:
+            plain = priority.split("#### Plain terms (portal CLIs)", 1)[1].split("#### WebSearch-only", 1)[0]
+            self.assertNotIn("site:", plain)
+            self.assertNotRegex(plain, r"\bOR\b")
+
+    def test_cross_query_pool_keeps_identities_market_dates_and_scan_facts(self):
+        text = " ".join(SCRAPER_SKILL.read_text(encoding="utf-8").split())
+        for required in (
+            "deduplicate the pool by exact original posting URL before Step 2",
+            "within the selected market only", "Keep query strings and distinct known URLs/IDs",
+            "Do not silently merge conflicting identities", "Keep every query's source/employer coverage and errors",
+            "several partial calls do not establish complete coverage", "A null date stays unknown",
+            "does not replace Step 2's state/tracker lookup",
+        ):
+            self.assertIn(required, text)
+
+
+class PortalAccessPathTests(unittest.TestCase):
+    """Candidate routes are explicitly distinct from accepted live connectors."""
+
+    def test_alert_leads_reuse_existing_route_without_state_or_access_fabrication(self):
+        text = " ".join(SCRAPER_SKILL.read_text().split())
+        for phrase in (
+            "LinkedIn direct `jobs-guest` scraping remains ineligible",
+            "The user manages subscriptions and supplies selected leads",
+            "not a full JD or proof the posting is open",
+            "existing `$job-search analyze --market <market> <URL or JD>` route",
+            "without changing ranking state", "Do not fabricate `source=cli`/`websearch`",
+            "Do not fetch the restricted portal to resolve a missing employer URL or ID",
+        ):
+            self.assertIn(phrase, text)
+        for market in ('europe', 'finland'):
+            guide = (REPO_ROOT / f'markets/{market}/search-queries.md').read_text()
+            self.assertIn('Step 1e', guide)
+
+    def test_indeed_client_and_region_access_remain_unconfirmed(self):
+        text = " ".join(SCRAPER_SKILL.read_text().split())
+        for phrase in (
+            "only for Claude Connector with account sign-in",
+            "keep this route unconfirmed", "non-Claude client/method and regional scope",
+            "Do not guess an MCP endpoint", "Get Resume", "outside discovery scope",
+            "Historical denied Job Market Finland/Duunitori paths stay blocked",
+            "not retry an API version or alternate route as a workaround",
+        ):
+            self.assertIn(phrase, text)
+
+    def test_euraxess_provisional_leads_require_detail_and_shared_budget(self):
+        text = " ".join(SCRAPER_SKILL.read_text().split())
+        for phrase in (
+            "not an employer registry entry labelled EURAXESS",
+            "https://euraxess.ec.europa.eu/jobs/search", "not server filtering or complete coverage",
+            "`needs_detail=true` is a provisional lead", "not a valid record to write in Step 4",
+            "same-ID canonical/title and employer/body checks",
+            "do not prepend search if that exceeds a one-list budget",
+            "Missing IDs or detail failures remain unconfirmed, never closed",
+            "Local structural replay is not online CLI or full-JD acceptance",
+        ):
+            self.assertIn(phrase, text)
+
+
+class SourceAccessContractTests(unittest.TestCase):
+    """Static rule/table replay, not execution of an agent or portal CLI."""
+
+    def test_enabled_is_not_permission_and_access_table_skips_unknown(self):
+        text = SCRAPER_SKILL.read_text(encoding="utf-8")
+        self.assertIn("`enabled: true` do not grant access permission", text)
+        self.assertIn("Missing permission evidence is `unconfirmed`", text)
+        self.assertIn("do not schedule its\ndirect CLI", text)
+        # Replay pre-assessed synthetic source decisions against the actual rule
+        # table. This proves table semantics only, not a runtime scheduler gate.
+        actions = dict(re.findall(
+            r"^\| `(permitted|denied|unconfirmed)` \| `(eligible|skip)` \|",
+            text, re.MULTILINE,
+        ))
+        for source, access, expected in [
+            ("enabled LinkedIn direct CLI restriction", "denied", "skip"),
+            ("enabled source without permission evidence", "unconfirmed", "skip"),
+            ("checker missing or failed", "unconfirmed", "skip"),
+            ("robots explicitly disallows", "denied", "skip"),
+            ("documented permitted method", "permitted", "eligible"),
+        ]:
+            with self.subTest(source=source):
+                self.assertEqual(actions[access], expected)
+        self.assertIn("coverage still unverified until results establish it", text)
+        self.assertIn("Keep disabled portals disabled", text)
+
+    def test_all_request_stages_share_gate_without_access_bypass(self):
+        text = SCRAPER_SKILL.read_text(encoding="utf-8")
+        step1 = text.split("### Step 1: Search", 1)[1].split("### Step 2:", 1)[0]
+        self.assertIn("source-access gate", step1.split("#### 1a.", 1)[0])
+        fallback = step1.split("#### 1c. WebSearch fallback", 1)[1]
+        self.assertIn("Apply the source-access gate before fallback", fallback)
+        self.assertIn("A CLI failure alone is\nnot permission", fallback)
+        self.assertIn("bypass denied/unconfirmed permission", fallback)
+        detail = text.split("### Step 2: Fetch & Parse", 1)[1].split("### Step 2.5:", 1)[0]
+        self.assertIn("source-access gate again before any detail request", detail)
+        self.assertNotIn("retry with browser headers", detail)
+        self.assertIn("do\nnot retry with different headers, curl", detail)
+        health = text.split("### Step 4.75: Portal Health Check", 1)[1].split("### Step 5:", 1)[0]
+        self.assertIn("source-access gate in ordinary and probe-only health modes", health)
+        self.assertIn("Denied/unconfirmed sources get no sentinel", health)
+        self.assertIn("including\nexplicitly named disabled portals", health)
+
+    def test_access_skips_and_failures_survive_zero_yield_summary(self):
+        text = SCRAPER_SKILL.read_text(encoding="utf-8")
+        summary = text.split("### Step 5: Present Results", 1)[1]
+        self.assertIn("even if it never ran, failed, or produced no surviving jobs", summary)
+        self.assertIn("skipped (access): <portal> - denied|unconfirmed; <reason>", summary)
+        self.assertIn("Missing\ncoverage is unverified, never healthy/no jobs", summary)
+        self.assertIn("Do not count an access skip or\nfailed request as an empty scan", summary)
+        self.assertIn("do not create a job/state row for it", summary)
+
+
 if __name__ == "__main__":
     unittest.main()

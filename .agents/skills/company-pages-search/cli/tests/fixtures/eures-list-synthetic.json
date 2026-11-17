@@ -1,0 +1,10 @@
+{
+  "numberRecords": 25,
+  "jvs": [
+    {"id":"fixture-job","title":"Protein scientist","employer":"Unverified fixture employer","locationMap":{"unknown":"Fixture city"},"creationDate":"2026-10-01","lastModificationDate":"2026-11-01","description":"Synthetic list text, not a verified JD."},
+    {"id":"fixture-job-1","title":"Protein scientist"},
+    {"id":"fixture-job-2","title":"Cell analyst"},
+    {"id":"fixture-job","title":"Protein scientist"}
+  ],
+  "facets": null
+}

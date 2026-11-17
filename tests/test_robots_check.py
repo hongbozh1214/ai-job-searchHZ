@@ -276,5 +276,52 @@ class TestArgumentHardening(unittest.TestCase):
 
 
 
+class TestStrictMode(unittest.TestCase):
+    def test_strict_single_request_and_no_redirect_flags(self):
+        from unittest.mock import patch
+        import robots_check
+        result = subprocess.CompletedProcess([], 0, stdout="User-agent: *\nAllow: /\n\n200", stderr="")
+        with patch.object(robots_check.subprocess, "run", return_value=result) as run:
+            rc, _ = robots_check.gate("https://example.test/jobs", agent="company-pages-search-skill", strict=True)
+        self.assertEqual(rc, 0)
+        run.assert_called_once()
+        args = run.call_args.args[0]
+        self.assertEqual(args[1], '-q')
+        self.assertNotIn("-L", args)
+        self.assertNotIn("--location", args)
+        self.assertNotIn("--max-redirs", args)
+        self.assertEqual(args[args.index("-A") + 1], "company-pages-search-skill")
+        self.assertEqual(args[-1], "https://example.test/robots.txt")
+
+    def test_strict_denies_error_redirect_missing_and_invalid_policy_without_retry(self):
+        from unittest.mock import patch
+        import robots_check
+        for code, body in [(301, ""), (302, ""), (403, ""), (404, ""), (429, ""), (500, ""), (200, "<html>challenge</html>")]:
+            with self.subTest(code=code), patch.object(robots_check, "_fetch", return_value=(body, code)) as fetch:
+                rc, _ = robots_check.gate("https://example.test/jobs", strict=True)
+                self.assertEqual(rc, 1)
+                fetch.assert_called_once_with("https://example.test/robots.txt", "Claude-User", strict=True)
+        with patch.object(robots_check, "_fetch", side_effect=TimeoutError) as fetch:
+            self.assertEqual(robots_check.gate("https://example.test/jobs", strict=True)[0], 1)
+            self.assertEqual(fetch.call_count, 1)
+
+    def test_strict_obeys_robots_deny(self):
+        from unittest.mock import patch
+        import robots_check
+        with patch.object(robots_check, "_fetch", return_value=("User-agent: *\nDisallow: /jobs\n", 200)) as fetch:
+            self.assertEqual(robots_check.gate("https://example.test/jobs", strict=True)[0], 1)
+            self.assertEqual(fetch.call_count, 1)
+
+    def test_default_still_falls_back_and_follows_redirects(self):
+        from unittest.mock import patch
+        import robots_check
+        responses = [subprocess.CompletedProcess([], 0, stdout="denied\n403", stderr=""), subprocess.CompletedProcess([], 0, stdout="User-agent: *\nAllow: /\n\n200", stderr="")]
+        with patch.object(robots_check.subprocess, "run", side_effect=responses) as run:
+            self.assertEqual(robots_check.gate("https://example.test/jobs")[0], 0)
+            self.assertEqual(run.call_count, 2)
+            for call in run.call_args_list:
+                self.assertIn("-L", call.args[0])
+
+
 if __name__ == "__main__":
     unittest.main()

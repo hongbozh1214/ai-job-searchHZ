@@ -1,0 +1,16 @@
+{
+  "id": "fixture-detail-1",
+  "reference": "synthetic-reference",
+  "creationDate": 1000000000,
+  "lastModificationDate": 1700000000,
+  "preferredLanguage": "de",
+  "jvProfiles": {
+    "de": {
+      "title": "Synthetic protein scientist",
+      "description": "Synthetische Stellenbeschreibung. Aufgaben: Entwicklung von Proteinassays. Anforderungen: Forschungserfahrung. Dies ist ausschliesslich ein Offline-Fixture und kein echter Arbeitsplatz.\nThe complete provided synthetic field must survive without truncation.",
+      "employer": {"name": "Synthetic employer", "website": "https://employer.invalid/"},
+      "locations": [{"cityName": "Fixture city", "countryCode": "XX"}],
+      "personContacts": [{"familyName": "DO_NOT_EMIT", "communications": {"emails": ["not-a-real-contact@example.invalid"]}}]
+    }
+  }
+}

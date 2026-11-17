@@ -18,7 +18,7 @@ Rules implemented (RFC 9309), deliberately on the cautious side:
   * any other failure to read robots.txt leaves permission unconfirmed,
     and the retry does not happen
 
-Usage:  python3 tools/robots_check.py <url> [--user-agent <name>]
+Usage:  python3 tools/robots_check.py <url> [--user-agent <name>] [--strict]
 Exit 0 = the retry may proceed. Exit 1 = do not retry; go to escalation step 3.
 """
 
@@ -28,7 +28,7 @@ from urllib.parse import urlsplit, unquote
 BROWSER = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
            '(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36')
 
-def _fetch(url, ua):
+def _fetch(url, ua, strict=False):
     """curl, not urllib: some hosts (jobup.ch) hang urllib indefinitely while
     answering curl in under a second, and --max-time is a hard ceiling."""
     # "--" terminates option parsing, so a URL beginning with a dash can never
@@ -36,7 +36,7 @@ def _fetch(url, ua):
     # scheme://host/robots.txt before calling here, so this is hardening for
     # direct callers rather than a hole in the gate path itself.
     r = subprocess.run(
-        ['curl', '-sS', '-L', '--max-redirs', '5', '--max-time', '12', '-A', ua,
+        ['curl', *(['-q'] if strict else []), '-sS', *([] if strict else ['-L', '--max-redirs', '5']), '--max-time', '12', '-A', ua,
          '-H', 'Accept: text/plain,*/*', '-w', '\n%{http_code}', '--', url],
         capture_output=True, text=True, timeout=20)
     if r.returncode != 0:
@@ -107,19 +107,19 @@ def allowed(text, agent, path):
             best_len, best_allow = n, is_allow      # ties -> Disallow wins (cautious)
     return True if best_len < 0 else best_allow
 
-def gate(url, agent='Claude-User'):
+def gate(url, agent='Claude-User', strict=False):
     parts = urlsplit(url)
     path = unquote(parts.path) or '/'
     if parts.query:
         path += '?' + parts.query
     robots = f'{parts.scheme}://{parts.netloc}/robots.txt'
     body, last = None, 'no attempt'
-    for ua in (agent, BROWSER):
+    for ua in ((agent,) if strict else (agent, BROWSER)):
         try:
-            text, code = _fetch(robots, ua)
+            text, code = _fetch(robots, ua, strict=True) if strict else _fetch(robots, ua)
         except Exception as e:
             last = type(e).__name__; continue
-        if code == 404:
+        if code == 404 and not strict:
             return 0, 'ALLOWED - no robots.txt published'
         if code == 200:
             if not is_robots_body(text):
@@ -144,7 +144,8 @@ if __name__ == '__main__':
         default='Claude-User',
         help='named user agent used by the initial fetch client',
     )
+    parser.add_argument('--strict', action='store_true', help='one request and user agent; no redirects; deny unconfirmed responses')
     args = parser.parse_args()
-    rc, msg = gate(args.url, args.user_agent)
+    rc, msg = gate(args.url, args.user_agent, strict=args.strict)
     print(msg)
     sys.exit(rc)

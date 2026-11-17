@@ -56,22 +56,30 @@ const HELP = `company-pages-cli — look up openings on companies' own career pa
 USAGE
   bun run src/cli.ts list [--format json|table|plain]
   bun run src/cli.ts search [--company <name>] [--query <kw>] [--location <substr>] [--limit <n>] [--format json|table|plain]
+  bun run src/cli.ts search --source work-in-finland [--query <kw>] [--limit <n>] [--format json|table|plain]
+  bun run src/cli.ts search --source eures [--query <server keyword>] [--limit <n>] [--format json|table|plain]
+  bun run src/cli.ts search --source euraxess [--query <title substring>] [--limit <n>] [--format json|table|plain]
+  bun run src/cli.ts detail --source work-in-finland --id <TalentAdore ID|jobly:ID> [--query <same list query>] [--format json|plain]
+  bun run src/cli.ts detail --source euraxess --id <numeric ID from the first page> [--format json|plain]
+  bun run src/cli.ts detail --source eures --id <exact raw ID from search> [--format json|plain]
   bun run src/cli.ts detail --company <name> --id <job id> [--format json|plain]
 
 REGISTRY
-  Reads ./company_pages.json at the repo root (personal, gitignored). If it is
+  Registry-backed commands read ./company_pages.json (personal, gitignored).
+  Explicit --source work-in-finland, euraxess or eures does not read this file. If it is
   missing, exits with NO_REGISTRY without querying the committed example file.
   Copy the example, then replace its entries with employers you selected.
 
 SEARCH FLAGS
+  --source <name>         work-in-finland, euraxess or eures: one public source page, no registry read; cannot combine with --company.
   --company, -c <name>    Restrict to one registry entry (exact name match).
-  --query, -q <text>      Keyword filter on job title (client-side substring).
+  --query, -q <text>      Title substring filter; work-in-finland and eures send a server query.
   --location <text>       Location filter (client-side substring).
   --limit, -n <n>         Cap results emitted (client-side).
   --format <fmt>          json (default) | table | plain.
 
 DETAIL FLAGS
-  --company <name>        REQUIRED. Registry entry name (must not be ats=generic).
+  --company <name>        Registry entry name; required unless an explicit supported --source is selected.
   --id <job id>            REQUIRED. The ATS's own job id (from a search result).
   --format <fmt>          json (default) | plain.
 
@@ -92,6 +100,11 @@ async function main(): Promise<number> {
   if (!cmd || flags.help || flags.h) {
     process.stdout.write(HELP)
     return cmd ? 0 : 1
+  }
+
+  if (flags.source !== undefined && (!["work-in-finland", "euraxess", "eures"].includes(String(flags.source)) || flags.company !== undefined || (cmd !== "search" && !(cmd === "detail" && ["euraxess", "eures", "work-in-finland"].includes(String(flags.source)))))) {
+    process.stderr.write(JSON.stringify({ error: "--source requires supported search or euraxess/eures/work-in-finland detail without --company", code: "BAD_ARG" }) + "\n")
+    return 1
   }
 
   const parseIntFlag = (name: string, raw: string | boolean | string[]): number | null => {
@@ -143,6 +156,7 @@ async function main(): Promise<number> {
       flags.limit = String(v)
     }
     const opts: SearchOpts = {
+      source: flags.source === "work-in-finland" || flags.source === "euraxess" || flags.source === "eures" ? flags.source : undefined,
       company: typeof flags.company === "string" ? flags.company : undefined,
       query: typeof flags.query === "string" ? flags.query : undefined,
       location: typeof flags.location === "string" ? flags.location : undefined,
@@ -155,7 +169,11 @@ async function main(): Promise<number> {
   if (cmd === "detail") {
     const company = typeof flags.company === "string" ? flags.company : undefined
     const id = typeof flags.id === "string" ? flags.id : undefined
-    if (!company || !id) {
+    if (flags.source === 'work-in-finland' && (!id || !/^(?:[A-Za-z0-9]+|jobly:[1-9]\d{0,11})$/.test(id) || (flags.query !== undefined && (typeof flags.query !== 'string' || !flags.query.trim())))) {
+      process.stderr.write(JSON.stringify({error:'WIF detail requires an exact supported VTT ID and optional nonempty same-list query',code:'BAD_ARG'})+'\n')
+      return 1
+    }
+    if ((!company && flags.source !== "euraxess" && flags.source !== "eures" && flags.source !== "work-in-finland") || !id) {
       process.stderr.write(
         JSON.stringify({ error: "detail requires --company <name> and --id <job id>", code: "NO_ARGS" }) + "\n",
       )
@@ -164,6 +182,8 @@ async function main(): Promise<number> {
     const fmt = (flags.format as string) || "json"
     const opts: DetailOpts = {
       company,
+      source: flags.source === "euraxess" || flags.source === "eures" || flags.source === "work-in-finland" ? flags.source : undefined,
+      query: typeof flags.query === "string" ? flags.query : undefined,
       id,
       format: (fmt === "plain" ? "plain" : "json") as DetailOpts["format"],
     }

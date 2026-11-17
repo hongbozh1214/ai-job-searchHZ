@@ -280,3 +280,13 @@ describe("transport errors are classified, not left bare", () => {
     expect(asked).toBe(0);
   });
 });
+
+test("strict checker option sends the same product user agent and fails closed", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "strict-gate-")); const argsPath = join(dir, "args.json")
+  const s = join(dir, "checker.py")
+  writeFileSync(s, `import json,sys\nopen(${JSON.stringify(argsPath)},'w').write(json.dumps(sys.argv[1:]))\nsys.exit(1)\n`)
+  try {
+    expect(await robotsCheckPyGate("https://example.invalid/jobs", s, "python3", true)).toBe(false)
+    expect(JSON.parse(await Bun.file(argsPath).text())).toEqual(["https://example.invalid/jobs", "--strict", "--user-agent", UA.split("/")[0]])
+  } finally { rmSync(dir, {recursive:true,force:true}) }
+})

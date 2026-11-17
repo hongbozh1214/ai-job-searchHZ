@@ -1,0 +1,24 @@
+{
+  "provenance": "Sanitized structure from public VTT/TalentAdore response; description excerpts intentionally redacted; not a complete JD.",
+  "job": {
+    "id": "ZlEYOj",
+    "company": "VTT",
+    "title": "Research Scientist or Senior Scientist, soft materials modelling team",
+    "location": null,
+    "url": "https://ats.talentadore.com/apply/research-scientist-or-senior-scientist-soft-materials-modelling-team/ZlEYOj",
+    "date": null,
+    "source_ats": "generic"
+  },
+  "jobPosting": {
+    "@context": "https://schema.org",
+    "@type": "JobPosting",
+    "identifier": {
+      "@type": "PropertyValue",
+      "name": "VTT",
+      "value": "ZlEYOj"
+    },
+    "title": "Research Scientist or Senior Scientist, soft materials modelling team",
+    "url": "https://ats.talentadore.com/apply/research-scientist-or-senior-scientist-soft-materials-modelling-team/ZlEYOj",
+    "description": "<p>In this role, you will develop and apply [redacted].</p><p>Who we are looking for: A PhD [redacted].</p>"
+  }
+}

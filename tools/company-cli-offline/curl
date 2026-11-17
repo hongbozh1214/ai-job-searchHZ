@@ -1,0 +1,45 @@
+#!/usr/bin/python3
+import os,sys
+marker=os.environ.get('COMPANY_OFFLINE_CURL_LOG')
+if marker:
+    with open(marker,'a') as f: f.write('stub_invoked\n')
+allowed={'https://www.vttresearch.com/robots.txt','https://ats.talentadore.com/robots.txt'}
+if os.environ.get('COMPANY_OFFLINE_ROBOTS_FIXTURE') == '1' and sys.argv[-1] in allowed:
+    print('User-agent: *\nAllow: /\n\n200', end='')
+    sys.exit(0)
+# Ashby uses a separate explicit fixture flag; the default still denies it.
+mode=os.environ.get('COMPANY_OFFLINE_ASHBY_ROBOTS_FIXTURE')
+if mode in {'1','deny'} and sys.argv[-1] == 'https://api.ashbyhq.com/robots.txt':
+    print('User-agent: *\n' + ('Allow: /' if mode == '1' else 'Disallow: /') + '\n\n200', end='')
+    sys.exit(0)
+# Opt-in synthetic robots response for this one verified board, never system curl.
+mode=os.environ.get('COMPANY_OFFLINE_NOVONESIS_ROBOTS_FIXTURE')
+if mode in {'1','deny'} and sys.argv[-1] == 'https://novonesis.wd103.myworkdayjobs.com/robots.txt':
+    print('User-agent: *\n' + ('Allow: /' if mode == '1' else 'Disallow: /') + '\n\n200', end='')
+    sys.exit(0)
+# This exact robots fixture is opt-in; no other URL or system curl fallback.
+mode=os.environ.get('COMPANY_OFFLINE_WIF_ROBOTS_FIXTURE')
+if mode in {'1','deny'} and sys.argv[-1] == 'https://www.workinfinland.com/robots.txt':
+    print('User-agent: *\n' + ('Allow: /' if mode == '1' else 'Disallow: /') + '\n\n200', end='')
+    sys.exit(0)
+# Exact opt-in fixture; never falls through to system curl or a live request.
+mode=os.environ.get('COMPANY_OFFLINE_EURAXESS_ROBOTS_FIXTURE')
+if mode in {'1','deny'} and sys.argv[-1] == 'https://euraxess.ec.europa.eu/robots.txt':
+    print('User-agent: *\n' + ('Allow: /' if mode == '1' else 'Disallow: /') + '\n\n200', end='')
+    sys.exit(0)
+# EURES exact opt-in fixtures; the BA permission is only one synthetic path.
+mode=os.environ.get('COMPANY_OFFLINE_EURES_ROBOTS_FIXTURE')
+if mode in {'1','deny','detail','original','original-deny','original-unknown'} and sys.argv[-1] == 'https://europa.eu/robots.txt':
+    allowed = 'Allow: /eures/api/jv-searchengine/public/jv-search/search$\n' if mode == '1' else 'Allow: /eures/api/jv-searchengine/public/jv/id/fixture-detail-1?requestLang=en&preferredLang=en$\n' if mode in {'detail','original','original-deny','original-unknown'} else ''
+    print('User-agent: *\nDisallow: /\n' + allowed + '\n200', end='')
+    sys.exit(0)
+if mode in {'original','original-deny'} and sys.argv[-1] == 'https://www.arbeitsagentur.de/robots.txt':
+    print('User-agent: *\nDisallow: /\n' + ('Allow: /jobsuche/jobdetail/synthetic-reference$\n' if mode == 'original' else '') + '\n200', end='')
+    sys.exit(0)
+# 仅供WIF→Jobly离线回放；未显式声明时仍默认拒绝。
+mode=os.environ.get('COMPANY_OFFLINE_JOBLY_ROBOTS_FIXTURE')
+if mode in {'1','deny'} and sys.argv[-1] == 'https://www.jobly.fi/robots.txt':
+    print('User-agent: *\n' + ('Allow: /' if mode == '1' else 'Disallow: /') + '\n\n200', end='')
+    sys.exit(0)
+sys.stderr.write('OFFLINE_CURL_DENIED\n')
+sys.exit(97)

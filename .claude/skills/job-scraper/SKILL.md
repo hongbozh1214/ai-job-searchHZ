@@ -43,20 +43,208 @@ Optional arguments:
    `{"seen": {}}` on the first successful write. Do not print or manually
    rewrite either whole file. Use the compact `lookup` and `add` calls in Steps
    2/4, including for China.
-2. Read `documents/profile/search-queries.md` for the local search strategy. Use
-   `.claude/skills/job-scraper/search-queries.md` for query rules and examples.
-   If the local strategy is missing, ask the user to run setup; initialize it
-   from `profile-templates/search-queries.md`, never by copying the full guide.
+2. For Europe/Finland, carry exactly one market resolved by the existing
+   `skills/job-search/SKILL.md` router; ask if missing or ambiguous before choosing
+   strategy files. Select the **local strategy** and **source guide** together:
+
+   | Market | Local strategy | Source guide |
+   | --- | --- | --- |
+   | `europe` | `documents/europe/profile/search-queries.md` | `markets/europe/search-queries.md` |
+   | `finland` | `documents/finland/profile/search-queries.md` | `markets/finland/search-queries.md` |
+
+   Do not substitute the global strategy or the other market's strategy when a
+   Europe/Finland local strategy is missing. Stop that market and request its
+   setup; do not generate queries from tracked examples or historical results.
+   Separate an explicitly requested two-market run into two selections/summaries;
+   do not pool their scope or infer a market from source domains or job locations.
+   Other/legacy routes retain their existing `documents/profile/search-queries.md`
+   selection and missing-file setup behavior; this table does not change China.
+   Use `.claude/skills/job-scraper/search-queries.md` for query rules/examples only.
+
+   Use sources explicitly selected by the local strategy. If it names no sources,
+   use the selected market's source guide as candidates in its existing order,
+   limited to this run's countries and sector. A guide is not a command to run
+   every listed source. In either case apply Step 1b's source-access gate and
+   enabled flags; neither installed CLIs nor the global/other-market source list
+   expands the selection. Do not rewrite personal strategy files or enable sources
+   to fill a gap. Record selection reasons and sources skipped or not attempted.
+   Prior audit/online evidence may inform selection but is historical, never a
+   successful request or coverage result for this run. Keep current untested
+   sources unverified; preserve denied/unconfirmed/partial/errors in Step 5.
+
+#### 0a. Europe/Finland limited-source rollout
+
+For Europe/Finland, use Step 0's selected market strategy, enabled source flags,
+source access and the current run budget. **Priority employers are preferences,
+not an employer allowlist.** Discover relevant roles across employers through
+eligible market-wide keyword sources as well as priority-company searches.
+The table below records previously accepted reader branches, not the complete
+set of employers worth searching or scoring. A maintained registry is a priority
+input, not the market's employer universe.
+
+| Entry | Initial scope | Output eligibility |
+| --- | --- | --- |
+| Novonesis | Existing exact Workday board, explicit --company only | Same-ID/canonical/JD-verified details only |
+| VTT | Existing exact official list/TalentAdore branch, explicit --company only | Same-ID/URL/JD-verified details only |
+| EURES | Europe supplemental keyword source, Step 1g | List leads provisional; only verified original-source details may advance |
+| Work in Finland | Finland supplemental list; VTT-only detail reuse, Step 1d | Lists provisional; supported VTT details only after deployment and sandbox acceptance of this change |
+| EURAXESS | Selected research-sector list/detail, Step 1f | Lists provisional; identity/employer/sections-verified details only after deployment and sandbox acceptance of this change |
+
+This is source eligibility, not a change to personal strategies, registry,
+portal toggles, scoring or platform permission. It does not enable any source
+that Step 0 did not select. Resolve the market before selecting entries; never
+infer it from the source domain. Split two-market runs and keep their state,
+coverage and summaries separate. Do not skip an employer just because it is not
+named in the table, registry or historical acceptance samples. Keep actual ATS
+support boundaries: an unimplemented/unsupported reader is not permission to
+guess a tenant, bypass a checker or call a restricted endpoint. Record it as
+`detail_method_unsupported`, separately from denied source access, and use only
+a separately documented permitted original-JD route if one is available.
+Ashby permission-unconfirmed and unsupported SuccessFactors paths remain pending
+capabilities; this does not exclude those employers from lawful discovery through
+other independently permitted sources. LinkedIn/Indeed alerts retain Step 1e's
+user-provided route, not automated scraping. Freehire stays out;
+blocked Job Market Finland/Duunitori/Nature paths are not retried or bypassed.
+China and its existing route are unchanged.
+
+For an ordinary user-requested market search, follow Step 1's query categories
+and consider relevant employers outside the priority list. Allocate the shared
+budget across discovery and verification; do not spend it all rechecking a few
+historical sample employers. Multiple terms and selected details may be processed
+only within that run's explicit budget and each reader's documented limits.
+One-keyword/one-detail maintenance probes and a VTT-only adapter contract are not
+permanent market-wide employer or candidate-count restrictions. Do not query the
+whole registry implicitly; select and budget company calls explicitly.
+Reserve the documented worst-case request budget BEFORE invoking a CLI; output
+--limit is not a page/request limit. Request-budget limits remain in force; this
+scope correction is not a command to make requests during maintenance.
+Honor any tighter run-specific budget; without an authorized scrape scope, skip
+network and report budget_unconfirmed. An offline dry-run uses explicit synthetic
+strategy, registry, fixtures and temporary state only. Never consume an old
+one-off probe budget or turn it into recurring permission.
+
+- Novonesis: CLI search can read 5 pages of 20; detail can rescan 5 pages plus
+  1 GET. Each Workday operation can visit up to 4 same-origin hops, each gated.
+  Conservatively reserve up to 20 protected requests for search, 24 for detail,
+  and their strict-checker calls; if the run's budget cannot cover a call, defer
+  that call. Do not invent a max-pages CLI flag or call --limit 1 a one-page cap.
+- VTT: normally search 1 GET and detail 1 list GET plus 1 matched detail GET;
+  the existing list reader may visit up to 4 allowed-board hops. Reserve up to
+  4 protected requests for search and 5 for detail, plus their checker calls.
+- EURES: search 1 POST for page 1/10; detail at most 1 API GET plus 1 explicitly
+  supplied supported original-page GET, each gated. No Finland country filter
+  is verified, and no implicit list precedes detail.
+- Work in Finland/EURAXESS: each list invocation reads one page and is separately
+  gated. Budget each selected detail independently; do not assume a historical
+  one-detail probe cap applies to every ordinary run. WIF re-reads the same
+  query page, reuses the official VTT list (up to 4 gated board hops), and reads
+  one matching TalentAdore detail (reserve 6 protected requests plus checkers).
+  The accepted VTT Jobly extension uses one WIF re-read plus one selected Jobly
+  GET (reserve 2 plus checkers),
+  without the VTT board. Its independent source gate cannot be skipped.
+  EURAXESS detail re-reads one list page and one selected detail (reserve 2 plus
+  checkers). Do not prepend a search when its extra list would exceed budget.
+  Until that acceptance, retain the deployed list-only restrictions.
+
+A rejected, unknown, challenged or rate-limited source stops without retry;
+retain errors/Retry-After and any partial coverage. Keep other independently
+eligible sources separate. Skip deferred calls explicitly rather than reporting
+no jobs. Budget is shared across keywords, source calls, markets and redirects;
+never reset it per query. Existing checker and adapter access checks still run.
+
+Keep list-only/unverified-JD leads visible in Step 5 and the provisional review
+queue defined in Step 0b; they are not excluded from evaluation. They stay outside
+verified-only Step 4/state writes. Missing company or stable identity cannot be
+guessed. For usable verified details, pool by exact original
+posting URL within the selected market, then use the existing lookup/add
+contract; new means unseen, not recently published. Preserve source/employer
+coverage/errors even if all rows become duplicates. A successful detail does
+not upgrade partial to full coverage, and null publication dates remain null.
+A source's historical acceptance is not a successful read for the current run.
+
+The discovery scope also does not exclude existing verified full JDs from the
+normal `/rank` or analyze route just because their employer is outside a recent
+maintenance sample. Missing full JD or unconfirmed identity prevents a complete,
+verified score, not provisional evaluation under Step 0b. Never invent missing
+salary/language/JD facts, change the candidate's thresholds, or treat a maintenance
+acceptance tool as a scoring rule. If no selected leads reach verified JD, report
+full scoring incomplete and still present retained leads, provisional scores or
+intervals and the exact reader/access/identity/budget gaps; do not label the
+market-wide task complete. Other candidates with independently permitted working paths may continue
+inside the shared budget; an actual access denial is never retried or bypassed.
+
+This correction changes no scheduler or source toggle and grants no new platform
+permission. It is not evidence that a real weekly or complete scrape has run.
+
+#### 0b. Europe/Finland: retain evidence-limited candidates
+
+For Europe/Finland, request access, posting identity and evaluation are separate
+decisions. This section is the canonical policy for both `/scrape` and `/rank`;
+China's existing complete-local-JD workflow is unchanged.
+
+A failed detail request, blocked/unknown access, unsupported reader, 403/404/429,
+parse error or missing JD does not discard an already observed list lead and does
+not by itself establish expiry, a hard-gate FAIL or an unsuitable job. Keep its
+actual title/employer/link, source coverage and error in the visible candidate
+pool. Stop restricted requests without retry/bypass; continue evaluating evidence
+already obtained and independently eligible candidates inside the run budget.
+Never invent a list when the list itself could not be read. Report source-level
+access failures even when no candidate identity was available.
+
+Use these identity decisions; parser rejection is evidence of an unresolved
+association, not automatically proof of a different posting:
+
+| Identity evidence | Candidate action | Detail action |
+| --- | --- | --- |
+| `verified` | `retain` | `use_verified_detail` |
+| `unconfirmed` | `retain` | `flag_association_pending` |
+| `confirmed_mismatch` | `retain_original_lead` | `reject_wrong_detail_pair` |
+
+Only confirmed different postings justify rejecting their association: for
+example, explicit authoritative same-namespace IDs and canonical pages identify
+different roles. Show the conflicting fields, links and reason to the user.
+Do not declare mismatch just for missing identifiers, employer abbreviations,
+case/formatting or a publisher's title suffix. An uncertain detail may receive a
+separate provisional assessment labeled association pending; do not merge its
+unconfirmed requirements/employer facts into the original lead as verified facts.
+A wrong detail is not a reason to silently erase the original list lead.
+
+**Provisional evaluation remains available.** Evaluate only what observed list,
+snippet, saved JD or fetched detail actually supports, using the existing profile,
+dimensions and weights. Mark unsupported dimensions unknown; do not invent scores,
+fill unknowns with zero, renormalize known weights or call a title-only assessment
+a complete JD score. For weighted dimensions whose evidence is sufficient, let
+L be their summed weighted contribution and U = L + the unknown weight. Report
+`provisional_interval=[L,U]` plus the evidence coverage and missing information.
+If no dimension can be supported, show [0,100] and explain that no discriminating
+fit score is available yet; keep the lead and assess title relevance separately.
+When all dimensions can be supported but access/association remains uncertain,
+show the triage score explicitly provisional with those issues; it is not a
+verified recommendation. Salary, language, contract and other unknown hard-gate
+facts stay FLAG, not invented PASS/FAIL; explicit actual deal-breakers still apply.
+An unavailable/missing salary does not authorize changing the user's threshold.
+
+Present provisional results in a separate visible table with role/company/link,
+score or interval, evidence scope, identity status and access/content problems.
+They remain in the evaluation queue even if a full-score count is zero. In a
+combined scrape/rank run pass these in-memory leads to this provisional table;
+do not require a formal seen-job row just to show their assessment. Provisional
+rows are report-only: do not send incomplete scores to `rank_state.py apply`,
+write `ranked`/`expired`, overwrite historical scores or invent a new state schema.
+A confirmed deadline/closure may still be reported under existing expiry rules;
+network failure or an identity error is never closure evidence on its own.
 
 ### Step 1: Search
 
-Read `documents/profile/search-queries.md` for the search strategy. By default,
-run the top 3 priority query categories. If the user said "broad", run all
-categories. If the user specified a focus area (e.g. "data science"), prioritize
-queries from that category. Stop and ask the user to run setup if the local file
-is missing.
+Use only the local strategy and source selection resolved in Step 0. By default,
+run its top 3 priority query categories. If the user said "broad", run all query
+categories within that selected market; broad does not enable every source. If the
+user specified a focus area (e.g. "data science"), prioritize that category. A
+missing local strategy stops the selected market as specified in Step 0.
 
-**Use the installed CLI tools as the primary search mechanism.** Fall back to `WebSearch` only for portals that do not have a CLI skill, or if `bun` is unavailable on the system.
+**Use eligible installed CLI tools as the primary search mechanism.** Apply the
+source-access gate below before any network call, including WebSearch fallback
+when a CLI or `bun` is unavailable.
 
 #### 1a. Check bun availability
 
@@ -64,17 +252,40 @@ is missing.
 bun --version
 ```
 
-If this fails (bun not installed), skip to **1c (WebSearch fallback)** for all portals and note the fallback in the Step 5 output.
+If this fails (bun not installed), consider **1c (WebSearch fallback)** only for
+eligible sources and note the fallback in the Step 5 output. Missing `bun` is not
+permission to access a source.
 
 #### 1b. Run CLI tools (primary — run these in parallel where possible)
 
-Discover installed portal skills from their short frontmatter only:
+Discover installed portal skills from their short frontmatter only. Keep two
+roots separate: the **project data root** contains `tools/`, `.claude/`,
+`documents/`, `company_pages.json`, and job state; the **skill discovery root**
+contains the installed `.agents/skills/`. Run project commands with the project
+as cwd. Select the discovery boundary explicitly for the actual deployment:
+
+| Layout | Command from the project data root |
+| --- | --- |
+| Standalone checkout (skills inside the project) | `python3 tools/portal_catalog.py --root .` |
+| Workspace with an `ai-job-search/` child project and skills at the workspace root | `python3 tools/portal_catalog.py --root ..` |
+
+The second form permits only that direct workspace parent, never an arbitrary
+ancestor or external root. Do not remove boundary checks, move skill directories,
+or retry with successively wider roots after a discovery error. From another cwd,
+use an absolute script path and an explicit absolute discovery root. For example,
+from the configured workspace this is equivalent to the second form:
 
 ```bash
-python3 tools/portal_catalog.py
+python3 ai-job-search/tools/portal_catalog.py --root .
 ```
 
-The JSON lists each skill's name, path and enabled flag; report disabled names
+The JSON remains an array of each skill's name, path and enabled flag. `path` is
+relative to the selected **discovery root**, not necessarily the project or cwd;
+resolve it against that root before reading the skill or locating its CLI.
+Missing directories, escaping links, and invalid frontmatter are discovery
+errors, not evidence that no portals exist. Report the error and use only the
+documented, policy-permitted fallback; never edit a toggle to recover discovery.
+Report disabled names
 without loading their full descriptions. Read the full `SKILL.md` **only** for
 enabled skills selected for this market, or for the one named portal in
 `/scrape health <portal>`. Its own documentation supplies exact CLI flags; do
@@ -83,31 +294,365 @@ not guess them. A new `/add-portal` skill is picked up automatically.
 **Honor the `enabled` toggle.** Missing means enabled. Skip disabled portals
 in ordinary runs and record their names for the Step 5 summary.
 
-For each **selected enabled** portal skill:
+**Source-access gate (search, fallback, detail and health).** Installation and
+`enabled: true` do not grant access permission. Before scheduling a source, read
+its selected skill's access restrictions and the applicable source/tool rules.
+User authorization is necessary but does not override a source restriction.
+Where the request path requires the real checker, retain its permission check
+for the actual path and every permitted redirect; do not replace it with this
+selection gate. Missing/failed checker or unknown permission stays unconfirmed.
+Keep this source-level decision and its evidence/reason in the run summary:
+
+| Source access | Network action | Summary |
+| --- | --- | --- |
+| `permitted` | `eligible` | Access permitted for the documented method/scope; coverage still unverified until results establish it. |
+| `denied` | `skip` | `skipped (access): denied`; coverage unverified, never healthy/no jobs. |
+| `unconfirmed` | `skip` | `skipped (access): unconfirmed`; coverage unverified, never healthy/no jobs. |
+
+Missing permission evidence is `unconfirmed`, not `permitted`. The installed
+LinkedIn skill declares automated access against its terms: do not schedule its
+direct CLI, automatic detail or health probes under that restriction. Low volume,
+public visibility and an enabled flag do not remove it. Manual user browsing,
+notifications or an explicitly approved interface need their own documented
+method/scope; do not automatically substitute them or fetch people-search links.
+Keep disabled portals disabled; a named health request can select a disabled
+portal but still must pass this gate. Never edit toggles to recover access.
+
+For each **selected enabled and access-permitted** portal skill:
 
 1. Read its `SKILL.md` to find the correct `bun run …` invocation and supported flags.
-2. Translate the query terms from `search-queries.md` into that portal's flag format (e.g. `--key`, `--search-string`, `--query`, filter codes — whatever the portal's SKILL.md specifies).
+   Use the selected skill's resolved path while keeping the project as cwd.
+   Discovery `--root` does **not** set a portal CLI's data root. Before using a
+   registry-driven CLI, verify how that CLI locates its data: a tool that derives
+   `company_pages.json` or `tools/robots_check.py` from its own module location
+   can resolve to the workspace after following a skill link, even with project
+   cwd. If it cannot explicitly select and verify this project's data root, mark
+   that CLI path incompatible and use the permitted fallback. Do not copy or read
+   a workspace-level registry as a substitute, change state-helper defaults, or
+   modify protected skill code to recover it. Repair of such a protected adapter
+   requires a separate patch/deployment handoff.
+2. Use that priority's **Plain terms** from the selected local strategy, never
+   tracked examples or `[YOUR_...]` placeholders. **One plain term per CLI call**
+   (a multi-word role is one term), using the portal's documented keyword flag.
+   Never pass a `site:` expression, boolean `OR`, or combined alternatives to a
+   CLI. For a legacy priority without usable Plain terms, derive only explicit
+   role/skill terms from that same priority's personal queries: remove the site
+   selector and separately specified location, and split alternatives into terms
+   while retaining multi-word roles. If that separation is ambiguous, skip that
+   query and record `query_unconfirmed`; do not guess, broaden the search, or read
+   another market's strategy. Do not rewrite personal files.
+
+   Follow the portal's `Query syntax:` line for literal quote/operator semantics,
+   not another portal's behavior. Shell grouping quotes are not literal quotes
+   inside the argument the CLI receives: `--query "protein engineer"` sends bare
+   `protein engineer`, while `--query '"protein engineer"'` also sends the double
+   quote characters. Add literal quotes only when that branch documents them as
+   supported. Missing/unverified syntax gets one bare term with no phrase-match
+   claim and no operators, not a live syntax probe. Existing source-access gates,
+   enabled flags and per-source request/page budgets still apply across all terms;
+   defer terms that exceed the budget, never multiply the budget per query.
 3. Scope to the last 14 days using the portal's supported recency **filter** flag (`--jobage`, `--since <YYYY-MM-DD>`, etc. — as documented per portal). A portal with **no recency flag** (jobdanmark offers none) still gets scoped: every portal's search output carries a `date` field, so filter client-side — drop results whose `date` is older than 14 days after the call returns, and never invent a flag the portal's SKILL.md does not document (the CLIs reject unknown flags). `--order PublicationDate` is a sort, and a sort is not a filter — pairing it with a `--limit` is a defensible approximation on a portal that offers nothing better (jobnet), but apply the client-side date filter on top all the same.
 4. Cap results to ~20 per call using the portal's limit flag.
 5. Use `--format json` for machine-readable output.
 
-Run all portal CLI calls in parallel where possible using the Agent tool. Collect all `results` arrays into a single pool for Step 2, keeping each result tagged with its source portal skill (for Step 2 `detail` lookups).
+Run all portal CLI calls in parallel where possible using the Agent tool. Before
+pooling `results`, retain each response's source portal, per-employer `meta.errors`
+and `meta.coverage` in the run summary; do not reduce the response to its array.
+For company-pages-search, use only the employers selected for this market and its
+exact documented `--company` flag; omitting it queries the whole registry. Follow
+its skill for the supported Workday and VTT list/detail branches and budgets.
 
-If a CLI tool exits with a non-zero code, log the error message and continue — do not abort the whole search.
+For each employer consume coverage and errors independently, even after exit 0:
+
+- `partial` retains usable identity-verified jobs but never proves full coverage.
+- `blocked`, `rate_limited`, `parse_failed`, `unknown` or any per-employer error
+  means incomplete/unconfirmed, not no openings or confirmed closure. Preserve the
+  reason and Retry-After. Do not retry or choose a fallback to bypass a denied or
+  unconfirmed checker, access restriction or rate limit.
+- `valid_empty` is an explicitly verified empty scan within its scope. Zero emitted
+  results, a client-side limit/filter, or absent coverage is not that evidence.
+  `complete` describes only the adapter's stated scope, not all employer channels.
+
+Keep these employer-level facts through detail, deduplication and Step 5, including
+employers whose jobs are all filtered or duplicates. Do not create a job/state row
+for an employer-level failure. No new state schema is required: keep coverage in
+the run summary, while job records keep the existing Step 4 contract.
+
+Pool usable results for Step 2 with their source portal tag and original stable ID,
+canonical URL, and nullable date. Apply the 14-day filter only to known publication
+dates. A null date stays unknown; neither capture time, first_seen nor today's date
+is a replacement. A deduplication decision of `new` means unseen, not recently posted.
+
+Across terms and portals, deduplicate the pool by exact original posting URL
+before Step 2, within the selected market only. Keep query strings and distinct
+known URLs/IDs; do not merge different jobs just because their titles match.
+Do not silently merge conflicting identities for the same URL; retain the
+conflict for review. Keep every query's source/employer coverage and errors in
+the run summary even when all its jobs are duplicates or filtered out. Pool
+deduplication does not replace Step 2's state/tracker lookup or grant access to
+detail, and several partial calls do not establish complete coverage.
+
+If a CLI tool exits with a non-zero code, preserve its error and unverified
+coverage; continue with independently eligible sources. Failure is not no jobs
+or permission for a fallback.
 
 #### 1c. WebSearch fallback
 
-Use `WebSearch` for:
-- Portals listed in `documents/profile/search-queries.md` that do **not** have a corresponding directory under `.agents/skills/`
-- Any portal whose CLI fails at runtime
-- When bun is unavailable (Step 1a failed)
+Apply the source-access gate before fallback. Use `WebSearch` only when that
+method/scope is permitted and a selected source has no CLI, `bun` is unavailable,
+or an eligible CLI has an ordinary runtime/parse failure. A CLI failure alone is
+not permission. Do not use fallback, another client, headers or sentinel probes
+to bypass denied/unconfirmed permission, a challenge, 403 or 429. Stop that source;
+preserve the restriction and Retry-After without retrying. Independently permitted
+sources may continue; do not relabel blocked-source coverage as successful.
 
-Use the site-specific query strings from `documents/profile/search-queries.md`
-directly as WebSearch queries for these portals.
+Use the site-specific query strings from the selected local strategy directly
+as WebSearch queries for these eligible portals. Source-guide examples are not
+personal queries or proof of a working list/detail entry.
 
 Tag each fallback result as WebSearch-sourced, keeping the portal tag when the fallback stands in for an installed portal whose CLI failed. Step 4 persists this as the entry's `source`, and Step 5 reports which portals ran on the fallback this run.
 
+#### 1d. Selected Work in Finland structured fallback
+
+When Step 0 selects Work in Finland, use the enabled `company-pages-search`
+skill's explicit source mode; this does not query any company registry or enable
+another source. Apply Step 1b's source-access gate and honor the skill's toggle.
+Do not schedule an unfiltered company search to prepare this source.
+Read the company skill for exact flags, then invoke its existing CLI:
+
+```bash
+bun run .agents/skills/company-pages-search/cli/src/cli.ts search --source work-in-finland --format json
+```
+
+Pass one of Step 0's plain role terms through `--query` using Step 1b's query
+rules, not search-engine `site:` syntax or unverified category/city IDs.
+Do not combine `--source` with `--company`. The WIF VTT-only detail extension
+below remains separately gated and is unavailable until deployed/accepted.
+This is an independent source read, never a proxy or recovery path for a denied
+Job Market Finland request; its upstream provider remains unverified.
+
+The reusable source branch sends `GET https://www.workinfinland.com/api/jobs/?limit=6&page=1`
+with the optional encoded query. It applies the real strict checker to the exact URL,
+15-second request timeout and 128-KiB streamed body cap, without following redirects,
+retry, browser headers or another client. Missing/failed checker stays unknown.
+Historical success is not current permission. The CLI does not require native
+WebFetch, a temporary registry or any script in outputs/. If it fails, retain the
+error; do not recover using a one-off script or weaken its gate.
+Read at most one page: the observed mobile page size is 6 (desktop 12); no complete
+board claim follows from server counts. `--limit` caps emitted results only, not
+requests or downloaded records; `--location` filters this page client-side.
+Retain received_count, server counts, source `meta.coverage` and `meta.errors`
+even if all results are filtered or duplicated. Do not fetch autocomplete or
+unsupported external JD automatically. No login, cookies or source-JS execution.
+
+Validate a JSON object with `jobs` as an array and nonnegative integer
+`totalJobs`/`totalPages`. Validate each job's nonempty title, employer name and
+absolute HTTPS posting URL; reject credential-bearing URLs. Preserve the supplied
+`externalUrl`, including its query, without inventing an ID, replacing it with
+the listing URL or stripping unknown identity parameters. Missing identity
+fields are record errors, not permission to guess or silently report no jobs.
+
+Map only these source fields into Step 2's existing result contract:
+
+| Result field | Work in Finland value |
+| --- | --- |
+| title | title |
+| company | employer.name |
+| location | employer.city |
+| url | externalUrl |
+| date | null |
+
+Missing location stays unknown. No publication/update date or stable ID was
+present in the observed card schema: keep them unknown; use the existing
+company/title/URL deduplication in Step 2. `expireDate` is not publication date
+and is not proof of closure or an application deadline without posting evidence;
+an invalid or absent deadline stays null. Never use
+capture time, first_seen or today's date as publication date.
+
+Keep source coverage and errors in the Step 5 summary even when all jobs are
+duplicates or excluded. A validated nonempty page has `partial` coverage; an
+explicit empty array with totalJobs=0 is `valid_empty` for that query/page only,
+not a full-market check. An empty page with nonzero total is `unknown`; malformed
+JSON/schema or missing identity is `parse_failed`. Denied/unknown checker,
+403/challenge, 429 or failed requests retain their restriction/error and unknown
+coverage; stop without retry. Never imitate the frontend's error handler that
+clears the cards and counts to zero. Server counts do not prove page coverage.
+
+Use `portal=work-in-finland` and `source=cli`; report
+`mechanism=company_pages_cli_source` in the run summary. `source_ats=generic`
+identifies the generic reader, not a verified employer ATS. The source has no
+registry entry and does not broaden a company search.
+Do not change old records or add a new state schema. Route usable results into
+Step 2's existing batched lookup, not a separate state/ingestion path. The
+external posting is a separately gated source: list identity is provisional
+until its ID/canonical URL and full JD are checked there. No JD or full-workflow
+success may be claimed from this list alone. An isolated dry-run uses only
+explicit temporary state/tracker paths, never Step 2/4's production defaults.
+
+VTT-only detail extension (candidate until deployed and actual sandbox accepted):
+`detail --source work-in-finland --id <exact TalentAdore ID> --query <same list query>`
+uses no registry. Omit query only if the selected list was unfiltered. Only a
+card explicitly naming VTT with the supported HTTPS TalentAdore URL may enter;
+the ID is derived from that URL, not invented as a source-wide ID. Re-read one
+WIF page, then reuse existing VTT official-board membership and structured-detail
+checks. Require exact source/official URL and compatible titles, same structured
+ID/URL and nonempty description; unsupported employers/links remain leads.
+Do not substitute list summaries. A list miss/denial/mismatch/missing body fails
+without fallback or closure. Preserve both source coverage and errors, canonical,
+stable ID, null publication date; VTT wire counts/Retry-After not exposed by the
+existing reader remain unknown, never guessed. No retries. Existing redacted
+structure fixtures do not independently prove full live JD completeness.
+Only successfully verified details may reach Step 2/4 after the normal gates;
+retain every list's partial/errors even after duplicate removal.
+
+Jobly extension (local candidate; do not use until deployed and sandbox accepted):
+VTT cards with an exact supported www.jobly.fi/en/job/<slug>-<ID> URL may expose
+`jobly:<ID>`. Use that exact returned ID and the same list query in existing
+`detail --source work-in-finland`, never convert it to a TalentAdore ID.
+Re-read one WIF page and separately strictly gate one matched Jobly page; require
+exact same-slug/same-number declared /tyopaikka/ canonical, one JobPosting,
+matching VTT employer/title and the observed description/requirements structure.
+A declared language canonical does not authorize fetching it. Keep source_url
+as the supplied original and canonical_url/url as the validated declared URL;
+existing URL dedup consumes verified canonical details and retains raw-source
+provenance. Same titles on Academic Positions/other domains are not dedup proof.
+Unknown dates remain null; preserve every source's partial/errors/Retry-After.
+Do not infer independent full-body completeness from nonempty structured text.
+Wrong identity/missing body/denial/redirect/429 stops without a list-summary
+fallback or closure claim. This changes no source activation, market selection,
+personal criteria, scheduler or formal state. For every unsupported or failed
+detail, Step 0b retains the lead and its provisional assessment; this reader's
+VTT-only implementation is not an employer exclusion for the overall workflow.
+
+#### 1e. LinkedIn / Indeed and user-controlled discovery leads
+
+LinkedIn direct `jobs-guest` scraping remains ineligible under Step 1b. A user
+request to repair a portal, an installed CLI, a public page, or a vendor's scraper
+claim does not establish platform permission. Do not use browser automation,
+session cookies, proxies, another UA/client, a third-party scraper, or search
+indexes to bypass a source restriction. A vendor interface needs documented
+permission for its actual data/method/scope, not merely an API key.
+
+User-controlled saved searches and official job alerts are discovery candidates,
+not an installed automated input. The user manages subscriptions and supplies
+selected leads; this workflow does not log in, subscribe, read a mailbox, or
+automatically follow alert/tracking URLs. An alert title/snippet is not a full JD
+or proof the posting is open. If the user supplies an employer's original posting
+URL or JD, use the existing `$job-search analyze --market <market> <URL or JD>`
+route for Europe/Finland, without changing ranking state. A separately requested
+scrape still needs its selected sources and real source-access/checker gates.
+Do not fabricate `source=cli`/`websearch` for user-supplied/alert content or add a
+new state schema; retain that lead's provenance in the response instead. Do not
+fetch the restricted portal to resolve a missing employer URL or ID.
+
+Indeed's documented official MCP beta supplies Job Search and Job Detail, but
+currently states availability only for Claude Connector with account sign-in.
+That does not establish an authorized OpenClaw integration: keep this route
+unconfirmed until Indeed documents or grants the non-Claude client/method and
+regional scope. Do not guess an MCP endpoint, reuse Claude credentials, emulate
+a client, or install/configure a connector to test around this condition.
+Get Resume and other personal-profile tools are outside discovery scope. A user
+may separately use the official supported client and provide chosen employer
+links; this is not direct OpenClaw/Indeed search acceptance.
+
+The same user-provided-lead route may receive manually selected Duunivahti
+alerts, but it does not permit Duunitori list scraping. Historical denied Job
+Market Finland/Duunitori paths stay blocked; do not retry an API version or
+alternate route as a workaround. Keep blocked/unknown and partial coverage in
+the summary, including sources for which no permitted automated input exists.
+
+#### 1f. Selected EURAXESS source
+
+When this source is selected and the deployed company CLI actually supports it,
+use its documented `search --source euraxess` or `detail --source euraxess --id`
+branch, not an employer registry entry labelled EURAXESS. Honor the parent skill
+toggle, source-access/strict checker gate, selected market and shared budget.
+The verified list entry is `https://euraxess.ec.europa.eu/jobs/search`; `/jobs`
+is an introduction. One-page client filtering is not server filtering or complete
+coverage. Keep the per-source meta.coverage/errors even when no jobs survive.
+
+List employer/publication fields can be unknown. An empty company with
+`needs_detail=true` is a provisional lead, not a valid record to write in Step 4.
+Require the source detail's same-ID canonical/title and employer/body checks
+before passing identity-complete records to existing batched deduplication.
+The detail metadata extension is candidate-only until deployed and sandbox
+accepted; preserve list warnings alongside separate detail coverage, including
+on failure and plain output stderr. Canonical URL is explicit. Section-level
+reading does not prove independently complete live JD; report exactly the
+observed Offer Description/Requirements/Additional Information scope.
+Detail rescans the first page then reads at most one matched posting: account
+for both requests and do not prepend search if that exceeds a one-list budget.
+Missing IDs or detail failures remain unconfirmed, never closed. Preserve
+partial, source errors and unknown publication dates; do not use deadlines or
+header/capture dates as publication. Local structural replay is not online CLI
+or full-JD acceptance; undeployed/unsupported branches stay unverified rather
+than silently falling back to an unfiltered registry search.
+
+#### 1g. Selected EURES list source
+
+EURES is eligible for the user-approved limited rollout in Step 0a, when selected
+for Europe and separately permitted/budgeted. This removes the maintenance-only
+selection block for that scope; it does not start a scrape or grant access,
+unlimited requests, Finland country filtering or complete market coverage.
+
+Only when selected, permitted and supported by the deployed company CLI, use
+`search --source eures` under the parent skill toggle and shared request budget.
+Do not add an EURES employer to the personal registry or silently query all
+employers if the source flag is unsupported. The CLI reads one unfiltered page
+of at most ten records with the documented minimal POST body. Only if the
+deployed CLI includes the server-keyword change, `--query` sends a trimmed plain
+keyword under EVERYWHERE; do not title-filter its description matches again.
+The earlier deployed CLI used a title-only client filter: a local candidate is
+not deployment evidence. `--location`/`--limit` still filter output only; country
+selection remains unsupported, and no query is a Europe-wide complete scan.
+Preserve meta.coverage.query_scope/country_scope where provided; an omitted
+query means an unfiltered page, not a targeted check.
+
+Treat results as provisional leads: stable raw ID/title are observed, while
+employer, location, publication, canonical webpage and full JD remain unknown.
+The `url_kind=unverified_api_detail_reference` URL is a declared source API
+reference, not a verified posting webpage; `canonical_url=null` and
+`needs_detail=true` must survive. Do not write these leads into Step 4/state or
+present them as verified recommendations. The deployed detail branch supports `detail --source eures --id <exact raw search ID>`; only call it after
+explicit source permission and verified deployment, not generic company detail.
+Without an explicitly supported original link it spends one strict checker
+and one GET, requires an exact response ID/unambiguous profile, and returns
+`JD_completeness=unverified`, `needs_detail=true`, `canonical_url=null` and partial
+coverage/errors. Such API-only records stay outside Step 4: a description field
+and its length do not prove the complete JD; employer homepages are not canonicals.
+
+The deployed original reader may additionally read only a supplied BA posting
+link bound to the exact API reference: maximum two GETs, each separately gated
+by the real strict checker. Require canonical/JobPosting URL and identifier
+agreement, employer agreement, compatible titles and duties/requirements markers.
+Use only the original JobPosting.description as JD; preserve API raw identity,
+title and description separately, never splice bodies or delete meaningful
+hyphens. `needs_detail=false` here means that canonical description was read,
+not a full source scan or independent proof of every section's completeness.
+Both branches remain partial, and dates remain unknown. A failed original read
+must not silently downgrade to API text or imply closure. API-only results remain
+provisional. Only currently identity/canonical/JD-verified original-source details
+may reach Step 2 under Step 0a, market selection, current-run access and budget,
+and existing Step 4 deduplication/ingestion preconditions. Prior sample acceptance
+does not establish that another source shape or current posting passed.
+The detail-only CLI reports title_crosscheck=not_performed; the original title
+relation is separate metadata, not a repeated list/title check.
+
+Retain per-source meta.coverage/errors, request count, source-declared totals
+and Retry-After. Partial/filter-zero is not a complete scan; failed/unknown
+reads are not no jobs, and valid_empty applies only to this query page. Dates
+stay unknown: source creation/modification fields and capture time do not
+replace publication. Platform relevance scores do not replace project scoring.
+Missing IDs or
+failed detail checks never imply closure. A prior one-off API probe, synthetic
+CLI replay and actual agent workflow acceptance are distinct evidence layers;
+undeployed code remains unverified and does not formally enable this source.
+
 ### Step 2: Fetch & Parse
+
+Apply the source-access gate again before any detail request, including an
+indexed result whose original source was not directly fetched. A search-index hit
+does not authorize fetching the target or prove that its posting is open.
 
 For each promising result from Step 1:
 
@@ -115,6 +660,14 @@ For each promising result from Step 1:
 and URL. For jobs worth a deeper look, fetch full detail with that portal's `detail`
 command (see its SKILL.md — do not guess flags) to extract **key requirements**,
 **application deadline**, and a brief description snippet.
+
+A detail failure, unconfirmed ID, HTTP 404 or missing description is not confirmed
+closure. Preserve its error; do not silently join another listing or mark it expired.
+For Europe/Finland retain the lead for Step 0b provisional evaluation; only a
+confirmed different posting rejects the detail association, with the conflict
+shown to the user. Do not equate a strict parser failure with exclusion.
+Preserve partial list coverage even after a successful detail. A description-presence
+flag alone does not prove complete JD content. Keep unknown dates/deadlines null.
 
 **Closed-at-source detection:** `linkedin-search detail` also returns `isActive`.
 `false` means the posting page itself renders LinkedIn's "No longer accepting
@@ -127,16 +680,17 @@ ghost report self-triaging. `isActive: true` is only the absence of that banner,
 proof the posting is open; deadlines and dead URLs remain `/rank`'s job.
 
 **From WebSearch results:** Use `WebFetch` on the posting URL and extract the same
-fields manually. If it returns HTTP 403, retry with browser headers via curl per
-`.claude/skills/job-application-assistant/09-web-research.md` before giving up — most
-bank and corporate sites reject WebFetch's user agent while serving browsers normally.
+fields manually only within the permitted method/scope. On 403, 429, a challenge
+or unknown permission, stop that source and preserve the reason/Retry-After; do
+not retry with different headers, curl or another environment.
 
 **Store a URL that actually resolves to the posting.** A listing-page URL with a
 `#fragment` appended (`.../jobs/ciso/#ikerian`) is not a posting: it fetches fine and
 returns unrelated job titles, which makes every later `/rank` and `/apply` run fail on
 that entry. When WebSearch only yields a listing page, search the employer's own careers
-site for the role and store that URL instead, or drop the candidate rather than saving a
-fragment link.
+site for the role within the permitted method/budget and store that URL instead.
+If unresolved, keep the lead as provisional with `posting_url_unconfirmed` under
+Step 0b rather than saving the fragment as a verified posting or dropping it.
 
 Before fetching full details where the search result has a usable company,
 title and URL, and again for any remaining candidates after extracting those
@@ -250,9 +804,9 @@ existing row or alter its primary ranking.
 }
 ```
 
-The `portal` field records which CLI skill produced the job (results are already tagged per portal in Step 1b - persist that tag here). Entries written before this field existed lack it; the health check (Step 4.75) attributes those by matching the URL's domain against each portal's base URL, so do not backfill.
+The `portal` field records the producing CLI skill (preserve Step 1b's tag), or the explicitly selected source tag in Step 1d. Entries written before this field existed lack it; the health check (Step 4.75) attributes those by matching the URL's domain against each portal's base URL, so do not backfill.
 
-The `source` field records which mechanism produced the entry: `cli` for Step 1b portal-CLI output, `websearch` for the Step 1c fallback. This is what keeps a ghost-job report diagnosable after the run's summary is gone: a stored entry whose URL later resolves to nothing (or to a different job) reads very differently depending on whether it came from live CLI output or from a search index that can be weeks stale - and a presented job with no entry here at all points at fabrication, which Rule 1 forbids. Entries written before this field existed lack it; never backfill it - the mechanism was not recorded.
+The `source` field records the existing storage category: `cli` for Step 1b portal-CLI output, `websearch` for the Step 1c fallback. Step 1d now also uses `cli` through the reusable explicit source branch and reports `mechanism=company_pages_cli_source`. Do not retag historical fallback records. This is what keeps a ghost-job report diagnosable after the run's summary is gone: a stored entry whose URL later resolves to nothing (or to a different job) reads very differently depending on whether it came from live CLI output or from a search index that can be weeks stale - and a presented job with no entry here at all points at fabrication, which Rule 1 forbids. Entries written before this field existed lack it; never backfill it - the mechanism was not recorded.
 
 The `market` field is the **original** explicit market for this posting. When the
 same URL appears in Europe and Finland, the registration helper adds `markets`
@@ -300,7 +854,17 @@ specific person was found; these are search links, not results.
 
 Scraper-based portal CLIs rot silently: when a portal changes its markup, the parser usually exits 0 with zero results or with null/garbled fields, and the Step 1c fallback never fires because it only triggers on hard failure. This step catches that from evidence the run already holds.
 
-**Free pass (no extra requests).** For each enabled portal that ran in Step 1b:
+Apply the source-access gate in ordinary and probe-only health modes, including
+explicitly named disabled portals. Denied/unconfirmed sources get no sentinel,
+retry or detail requests; report inconclusive with the access reason. An explicit
+health request is not an override. Zero results or missing coverage alone cannot
+establish healthy, valid-empty, or full coverage.
+
+**Free pass (no extra requests).** First retain the per-employer coverage/errors
+from Step 1b; explicit non-success coverage must not be replaced by a zero-yield
+verdict. The generic sentinel escalation below is not permission to override a
+company adapter's own request budget, stop condition or strict checker.
+For each enabled portal that ran in Step 1b:
 
 - **Degraded scan:** inspect the results it returned this run. Flags: `company` null or empty on every result, empty titles, undecoded entities (`&amp;`) or HTML fragments in titles, URLs that do not point at the portal. Any of these means the parser is half-working and `/scrape` is silently collecting junk.
 - **Yield history:** if a portal returned zero results, run
@@ -316,6 +880,24 @@ Scraper-based portal CLIs rot silently: when a portal changes its markup, the pa
 
 ### Step 5: Present Results
 
+For Europe/Finland, name the resolved market, local strategy path and source-guide
+path from Step 0, plus selected/attempted/skipped sources and selection reasons.
+Keep these separate per market. Historical evidence is not this run's acceptance;
+not-attempted sources remain unverified even if they previously worked.
+
+Include every selected source's access decision/reason from the source-access
+gate, even if it never ran, failed, or produced no surviving jobs. Print
+`skipped (access): <portal> - denied|unconfirmed; <reason>` for skipped sources;
+keep it separate from `skipped (disabled)` and retain runtime errors. Missing
+coverage is unverified, never healthy/no jobs. Do not count an access skip or
+failed request as an empty scan, and do not create a job/state row for it.
+
+Include an employer-level `coverage:` line for each response carrying coverage or
+errors: employer, status, scope/reason and any error (including partial and zero
+output). Missing coverage is unverified. Preserve these lines even if deduplication
+leaves no new jobs; never summarize such a run as a complete market scan or no jobs.
+Label null publication dates unknown, and distinguish unseen from newly published.
+
 Present new jobs in a table sorted by fit (high first). When Step 1b skipped
 portals (`enabled: false`), report them with the `skipped (disabled):` line below
 so opting one out stays visible rather than silent; omit the line when nothing
@@ -326,7 +908,7 @@ can be stale, so the reader should know which rows carry that caveat; omit the
 line when every portal ran its CLI. When Step 4.75 found a portal degraded, broken, or inconclusive,
 add one `health:` line per suspect portal (healthy portals get no line); after
 the report, offer to set that portal's `enabled: false` so `/scrape` stops
-running it (and covers it via the Step 1c fallback) until it is fixed - only
+running it until it is fixed; disabling it does not authorize a Step 1c fallback - only
 edit the toggle with the user's confirmation, and never edit anything else in
 the skill.
 
