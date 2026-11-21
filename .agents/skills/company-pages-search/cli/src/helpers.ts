@@ -126,19 +126,23 @@ export function writeCaughtError(error: unknown, fallbackCode: string): void {
  * already has pinned tests (tests/test_robots_check.py), so there is exactly one
  * definition of what "the site permits this" means.
  */
-/** Prefer the installed layout's stable registry link for checker selection.
- * An alternate data registry cannot displace that project. Preserve the existing
- * exact direct-child override when the stable link is unavailable; never use an
- * arbitrary registry's parent as a code root. */
+/** Recognize the nested project from its skill link, even without a registry.
+ * Preserve the existing registry hints for older layouts. */
 export function resolveRobotsChecker(repoRoot: string, registry: string, cwd: string = process.cwd()): string {
   const root = realpathSync(repoRoot)
   const fallback = path.join(root, "tools", "robots_check.py")
   const child = path.join(root, "ai-job-search")
+  const nestedChecker = path.join(child, "tools", "robots_check.py")
+  try {
+    if (realpathSync(child) === child && realpathSync(path.join(child, ".agents")) === path.join(root, ".agents")) {
+      return nestedChecker
+    }
+  } catch { /* Older layouts may only have a registry hint. */ }
   for (const candidate of [path.join(root, "company_pages.json"), path.resolve(cwd, registry)]) {
     try {
       const registryReal = realpathSync(candidate)
       if (registryReal === path.join(child, "company_pages.json") && realpathSync(child) === child) {
-        return path.join(child, "tools", "robots_check.py")
+        return nestedChecker
       }
     } catch { /* Try only the existing bounded project hints. */ }
   }

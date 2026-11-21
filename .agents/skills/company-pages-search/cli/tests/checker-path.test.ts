@@ -24,6 +24,16 @@ test("workspace registry link locates project checker from both working director
     expect(resolveRobotsChecker(workspace, path.join(workspace, "company_pages.json"), cwd)).toBe(path.join(project, "tools/robots_check.py"))
   }
 })
+test("nested project skill link locates the checker without a registry", () => {
+  const root = path.join(temp, "skills-linked-workspace")
+  const nested = path.join(root, "ai-job-search")
+  mkdirSync(path.join(root, ".agents"), { recursive: true })
+  mkdirSync(nested)
+  symlinkSync("../.agents", path.join(nested, ".agents"))
+  for (const cwd of [root, nested]) {
+    expect(resolveRobotsChecker(root, path.join(temp, "unrelated-registry.json"), cwd)).toBe(path.join(nested, "tools/robots_check.py"))
+  }
+})
 test("default gate executes the selected synthetic project checker from both cwd values", () => {
   const source = path.join(workspace, ".agents/skills/company-pages-search/cli/src")
   mkdirSync(source, { recursive: true })
