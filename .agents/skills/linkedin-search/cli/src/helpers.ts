@@ -15,8 +15,8 @@ export function writeError(error: string, code: string): void {
 const UA = "Mozilla/5.0 (compatible; linkedin-search-cli/1.0)"
 
 /** Fetch HTML with exponential backoff on 429/5xx. Returns "" on a 404. */
-export async function htmlFetch(url: string): Promise<string> {
-  const maxRetries = 6
+export async function htmlFetch(url: string, singleRequest = false): Promise<string> {
+  const maxRetries = singleRequest ? 0 : 6
   let delay = 500
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const response = await fetch(url, {
@@ -26,19 +26,20 @@ export async function htmlFetch(url: string): Promise<string> {
         "Accept-Language": "en-US,en;q=0.9",
         "X-Requested-With": "XMLHttpRequest",
       },
-      redirect: "follow",
+      redirect: singleRequest ? "manual" : "follow",
       signal: AbortSignal.timeout(15000),
     })
     if (response.status === 429 || response.status >= 500) {
       if (attempt === maxRetries) {
-        throw new Error(`Request failed: ${response.status} ${response.statusText}`)
+        const retryAfter = response.headers.get("retry-after")
+        throw new Error(`Request failed: ${response.status} ${response.statusText}${retryAfter ? ` (Retry-After: ${retryAfter})` : ""}`)
       }
       const jitter = Math.floor(Math.random() * 500)
       await new Promise((r) => setTimeout(r, delay + jitter))
       delay = Math.min(delay * 2, 8000)
       continue
     }
-    if (response.status === 404) return ""
+    if (response.status === 404 && !singleRequest) return ""
     if (!response.ok) {
       throw new Error(`Request failed: ${response.status} ${response.statusText}`)
     }

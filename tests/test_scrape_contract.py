@@ -206,7 +206,6 @@ class PortalAccessPathTests(unittest.TestCase):
     def test_alert_leads_reuse_existing_route_without_state_or_access_fabrication(self):
         text = " ".join(SCRAPER_SKILL.read_text().split())
         for phrase in (
-            "LinkedIn direct `jobs-guest` scraping remains ineligible",
             "The user manages subscriptions and supplies selected leads",
             "not a full JD or proof the posting is open",
             "existing `$job-search analyze --market <market> <URL or JD>` route",
@@ -218,7 +217,7 @@ class PortalAccessPathTests(unittest.TestCase):
             guide = (REPO_ROOT / f'markets/{market}/search-queries.md').read_text()
             self.assertIn('Step 1e', guide)
 
-    def test_indeed_client_and_region_access_remain_unconfirmed(self):
+    def test_indeed_mcp_client_and_region_access_remain_unconfirmed(self):
         text = " ".join(SCRAPER_SKILL.read_text().split())
         for phrase in (
             "only for Claude Connector with account sign-in",
@@ -228,6 +227,32 @@ class PortalAccessPathTests(unittest.TestCase):
             "not retry an API version or alternate route as a workaround",
         ):
             self.assertIn(phrase, text)
+
+    def test_indeed_routine_selection_requires_standing_country_and_client_authorization(self):
+        text = " ".join(SCRAPER_SKILL.read_text().split())
+        branch = text.split("**Indeed country list search (user-confirmed Indeed authorization).**", 1)[1]
+        branch = branch.split("User-controlled saved searches", 1)[0]
+        for phrase in (
+            "one `jobSearch` POST", "`https://apis.indeed.com/graphql`",
+            "approved runtime credential, without a robots precheck", "Do not retry or paginate",
+            "automatically in ordinary interactive `/scrape` runs",
+            "standing Indeed authorization covers automatic queries for the selected country",
+            "JobSpy App identifier and runtime credential",
+            "without an additional robots precheck or a repeat permission prompt",
+            "`--country CN` for China",
+            "Scheduled or unattended runs stay outside this rollout",
+            "A one-time authorization or successful historical test does not establish standing authorization",
+            "`skipped (access): unconfirmed`",
+            "intersect the current workspace's selected market strategy and standing Indeed scope",
+            "Query each eligible country exactly once, serially",
+            "Keep Finland under its own market", "Reserve one POST per eligible country",
+            "`documents/profile/source-access.md`", "--env-file=.env.indeed.runtime",
+            "Do not reuse another candidate's scope or runtime environment",
+            "Stop the remaining Indeed calls on access denial, rate limit or unconfirmed response",
+            "exclude Indeed detail and health requests",
+        ):
+            self.assertIn(phrase, branch)
+        self.assertNotIn("outputs/indeed-jobspy-cli-deploy-", branch)
 
     def test_euraxess_provisional_leads_require_detail_and_shared_budget(self):
         text = " ".join(SCRAPER_SKILL.read_text().split())
@@ -250,7 +275,7 @@ class SourceAccessContractTests(unittest.TestCase):
         text = SCRAPER_SKILL.read_text(encoding="utf-8")
         self.assertIn("`enabled: true` do not grant access permission", text)
         self.assertIn("Missing permission evidence is `unconfirmed`", text)
-        self.assertIn("do not schedule its\ndirect CLI", text)
+        self.assertIn("LinkedIn list\nsearch follows Step 1e; direct LinkedIn detail and health probes remain excluded", text)
         # Replay pre-assessed synthetic source decisions against the actual rule
         # table. This proves table semantics only, not a runtime scheduler gate.
         actions = dict(re.findall(
@@ -258,7 +283,7 @@ class SourceAccessContractTests(unittest.TestCase):
             text, re.MULTILINE,
         ))
         for source, access, expected in [
-            ("enabled LinkedIn direct CLI restriction", "denied", "skip"),
+            ("LinkedIn detail outside the list exception", "denied", "skip"),
             ("enabled source without permission evidence", "unconfirmed", "skip"),
             ("checker missing or failed", "unconfirmed", "skip"),
             ("robots explicitly disallows", "denied", "skip"),
@@ -268,6 +293,20 @@ class SourceAccessContractTests(unittest.TestCase):
                 self.assertEqual(actions[access], expected)
         self.assertIn("coverage still unverified until results establish it", text)
         self.assertIn("Keep disabled portals disabled", text)
+
+    def test_linkedin_list_is_automatic_and_bounded_only_in_selected_markets(self):
+        text = " ".join(SCRAPER_SKILL.read_text(encoding="utf-8").split())
+        branch = text.split("**LinkedIn list search (personal-use exception).**", 1)[1].split("User-controlled saved searches", 1)[0]
+        for phrase in (
+            "Include it automatically in ordinary Finland/Europe scrapes",
+            "Respect the current workspace's strategy, its explicit exclusions and the shared request budget",
+            "search --single-request --page 1 --format json",
+            "Limit to one list call per market per run",
+            "Stop LinkedIn for the rest of the run",
+            "Carry successful rows as partial list leads",
+            "This exception excludes LinkedIn detail and health requests",
+        ):
+            self.assertIn(phrase, branch)
 
     def test_all_request_stages_share_gate_without_access_bypass(self):
         text = SCRAPER_SKILL.read_text(encoding="utf-8")

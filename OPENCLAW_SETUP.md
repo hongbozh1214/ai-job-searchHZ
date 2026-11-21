@@ -103,6 +103,16 @@ workspace, not by recursively searching an arbitrary child checkout. Run
 `python3 tools/doctor.py --agent <agent-id>` in **each** checkout to confirm
 runtime discovery before setup.
 
+Use the same maintained portal code and workflow rules in each checkout. Source
+selection and keywords come from that checkout's market strategy. Keep portal
+credentials and account-specific authorization local to that checkout. For
+Indeed, record the current workspace's approved country codes and JobSpy
+list-query scope in `documents/profile/source-access.md` without the credential.
+Store the credential in `.env.indeed` and the absolute
+`INDEED_JOBSPY_VENDOR_DIR` setting in `.env.indeed.runtime`. Verify both in each
+agent's runtime before calling Indeed. See canonical job-scraper Step 1e for
+source selection and request limits.
+
 ## Invoke
 
 ```text

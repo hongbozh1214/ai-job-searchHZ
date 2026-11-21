@@ -11,6 +11,7 @@
 import { runList, type ListOpts } from "./commands/list.js"
 import { runSearch, type SearchOpts } from "./commands/search.js"
 import { runDetail, type DetailOpts } from "./commands/detail.js"
+import { INDEED_COUNTRIES, isIndeedCountry } from "./indeed.js"
 
 interface Flags {
   _: string[]
@@ -59,6 +60,7 @@ USAGE
   bun run src/cli.ts search --source work-in-finland [--query <kw>] [--limit <n>] [--format json|table|plain]
   bun run src/cli.ts search --source eures [--query <server keyword>] [--limit <n>] [--format json|table|plain]
   bun run src/cli.ts search --source euraxess [--query <title substring>] [--limit <n>] [--format json|table|plain]
+  bun run src/cli.ts search --source indeed --query <keyword> [--country <code>] [--limit <n>] [--format json|table|plain]
   bun run src/cli.ts detail --source work-in-finland --id <TalentAdore ID|jobly:ID> [--query <same list query>] [--format json|plain]
   bun run src/cli.ts detail --source euraxess --id <numeric ID from the first page> [--format json|plain]
   bun run src/cli.ts detail --source eures --id <exact raw ID from search> [--format json|plain]
@@ -66,15 +68,16 @@ USAGE
 
 REGISTRY
   Registry-backed commands read ./company_pages.json (personal, gitignored).
-  Explicit --source work-in-finland, euraxess or eures does not read this file. If it is
-  missing, exits with NO_REGISTRY without querying the committed example file.
+  Explicit --source does not read this file. Registry-backed commands exit with
+  NO_REGISTRY if it is missing, without querying the committed example file.
   Copy the example, then replace its entries with employers you selected.
 
 SEARCH FLAGS
-  --source <name>         work-in-finland, euraxess or eures: one public source page, no registry read; cannot combine with --company.
+  --source <name>         work-in-finland, euraxess, eures or indeed: one source page, no registry read; cannot combine with --company.
   --company, -c <name>    Restrict to one registry entry (exact name match).
-  --query, -q <text>      Title substring filter; work-in-finland and eures send a server query.
+  --query, -q <text>      Title substring filter; work-in-finland, eures and indeed send a server query.
   --location <text>       Location filter (client-side substring).
+  --country <code>        Indeed only: one of ${INDEED_COUNTRIES.join(", ")} (default FI).
   --limit, -n <n>         Cap results emitted (client-side).
   --format <fmt>          json (default) | table | plain.
 
@@ -102,8 +105,13 @@ async function main(): Promise<number> {
     return cmd ? 0 : 1
   }
 
-  if (flags.source !== undefined && (!["work-in-finland", "euraxess", "eures"].includes(String(flags.source)) || flags.company !== undefined || (cmd !== "search" && !(cmd === "detail" && ["euraxess", "eures", "work-in-finland"].includes(String(flags.source)))))) {
+  if (flags.source !== undefined && (!["work-in-finland", "euraxess", "eures", "indeed"].includes(String(flags.source)) || flags.company !== undefined || (cmd !== "search" && !(cmd === "detail" && ["euraxess", "eures", "work-in-finland"].includes(String(flags.source)))))) {
     process.stderr.write(JSON.stringify({ error: "--source requires supported search or euraxess/eures/work-in-finland detail without --company", code: "BAD_ARG" }) + "\n")
+    return 1
+  }
+  const country = typeof flags.country === "string" ? flags.country.trim().toUpperCase() : undefined
+  if (flags.country !== undefined && (cmd !== "search" || flags.source !== "indeed" || !isIndeedCountry(country))) {
+    process.stderr.write(JSON.stringify({ error: "--country requires an Indeed search and one of " + INDEED_COUNTRIES.join(", "), code: "BAD_ARG" }) + "\n")
     return 1
   }
 
@@ -156,8 +164,10 @@ async function main(): Promise<number> {
       flags.limit = String(v)
     }
     const opts: SearchOpts = {
-      source: flags.source === "work-in-finland" || flags.source === "euraxess" || flags.source === "eures" ? flags.source : undefined,
+      source: flags.source === "work-in-finland" || flags.source === "euraxess" ||
+        flags.source === "eures" || flags.source === "indeed" ? flags.source : undefined,
       company: typeof flags.company === "string" ? flags.company : undefined,
+      country: isIndeedCountry(country) ? country : undefined,
       query: typeof flags.query === "string" ? flags.query : undefined,
       location: typeof flags.location === "string" ? flags.location : undefined,
       limit: flags.limit ? parseInt(flags.limit as string, 10) : undefined,

@@ -4,12 +4,14 @@ import { fetchWorkdayList } from "../workday.js"
 import { fetchWorkInFinland } from "../work-in-finland.js"
 import { fetchEuraxessList } from "../euraxess.js"
 import { fetchEuresList } from "../eures.js"
+import { fetchIndeedPage, type IndeedCountry } from "../indeed.js"
 import { fetchVttList, isVttBoard } from "../vtt.js"
 import { fetchGreenhouse, fetchLever, fetchSmartRecruiters, fetchOracle, fetchGeneric } from "../ats.js"
 
 export interface SearchOpts {
-  source?: "work-in-finland" | "euraxess" | "eures"
+  source?: "work-in-finland" | "euraxess" | "eures" | "indeed"
   company?: string
+  country?: IndeedCountry
   query?: string
   location?: string
   limit?: number
@@ -64,9 +66,13 @@ function renderTable(jobs: NormalizedJob[]): string {
 
 export async function runSearch(opts: SearchOpts, workdayDeps: Parameters<typeof fetchWorkdayList>[2] = {}): Promise<number> {
   try {
-    if (opts.source !== undefined && (!["work-in-finland", "euraxess", "eures"].includes(opts.source) || opts.company)) throw Error("source search requires a supported --source without --company")
+    if (opts.source !== undefined && (!["work-in-finland", "euraxess", "eures", "indeed"].includes(opts.source) || opts.company)) throw Error("source search requires a supported --source without --company")
     // Explicit source selection never loads or widens the personal registry.
-    const sourceScan = opts.source === "eures" ? await fetchEuresList(workdayDeps, opts.query) : opts.source === "euraxess" ? await fetchEuraxessList(workdayDeps) : opts.source ? await fetchWorkInFinland(opts.query, workdayDeps) : null
+    const indeedCountry = opts.country ?? "FI"
+    const sourceScan = opts.source === "indeed" ? await fetchIndeedPage(opts.query, indeedCountry)
+      : opts.source === "eures" ? await fetchEuresList(workdayDeps, opts.query)
+      : opts.source === "euraxess" ? await fetchEuraxessList(workdayDeps)
+      : opts.source ? await fetchWorkInFinland(opts.query, workdayDeps) : null
     const registry = opts.source ? [] : await loadRegistry()
     const entries = opts.company
       ? registry.filter((e) => e.name.toLowerCase() === opts.company!.toLowerCase())
@@ -83,9 +89,9 @@ export async function runSearch(opts: SearchOpts, workdayDeps: Parameters<typeof
     const coverage: unknown[] = []
     if (sourceScan) {
       jobs.push(...sourceScan.jobs)
-      const sourceName = opts.source === "eures" ? "EURES" : opts.source === "euraxess" ? "EURAXESS" : "Work in Finland"
+      const sourceName = opts.source === "indeed" ? "Indeed" : opts.source === "eures" ? "EURES" : opts.source === "euraxess" ? "EURAXESS" : "Work in Finland"
       errors.push(...sourceScan.errors.map(error => ({ company: sourceName, error })))
-      coverage.push({ company: sourceName, source: opts.source, status: sourceScan.coverage, reason: sourceScan.reason, requests: sourceScan.requests, scope: "one_source_page", received_count: sourceScan.received_count, total_jobs: sourceScan.total_jobs, total_pages: sourceScan.total_pages ?? null, retry_after: sourceScan.retry_after, ...(opts.source === "eures" ? { query_scope: opts.query === undefined ? "unfiltered" : "server_everywhere", country_scope: "unfiltered" } : {}) })
+      coverage.push({ company: sourceName, source: opts.source, status: sourceScan.coverage, reason: sourceScan.reason, requests: sourceScan.requests, scope: "one_source_page", received_count: sourceScan.received_count, total_jobs: sourceScan.total_jobs, total_pages: sourceScan.total_pages ?? null, retry_after: sourceScan.retry_after, ...(opts.source === "eures" ? { query_scope: opts.query === undefined ? "unfiltered" : "server_everywhere", country_scope: "unfiltered" } : {}), ...(opts.source === "indeed" ? { country_scope: indeedCountry } : {}) })
     }
     results.forEach((r, i) => {
       if (r.status === "fulfilled") {
@@ -98,7 +104,8 @@ export async function runSearch(opts: SearchOpts, workdayDeps: Parameters<typeof
 
     // Server queries may match the description, not the title. Do not discard
     // those records with the registry branch's literal title filter.
-    jobs = jobs.filter((j) => matchesFilters(j, opts.source === "work-in-finland" || opts.source === "eures" ? undefined : opts.query, opts.location))
+    const serverQuery = opts.source === "work-in-finland" || opts.source === "eures" || opts.source === "indeed"
+    jobs = jobs.filter((j) => matchesFilters(j, serverQuery ? undefined : opts.query, opts.location))
     if (opts.limit !== undefined && opts.limit >= 0) jobs = jobs.slice(0, opts.limit)
 
     if (opts.format === "table") {

@@ -14,6 +14,8 @@ Rules implemented (RFC 9309), deliberately on the cautious side:
   * a Disallow for either "*" or the selected client user agent blocks the retry
   * blank lines inside a record do not end it (Python's robotparser drops
     rules in that case, which fails open - see tests)
+  * one leading UTF-8 BOM is skipped; undecodable rule lines are unconfirmed
+  * only http(s) URLs with a host reach curl; curl protocols are restricted
   * 404 means no published policy, which is permission
   * any other failure to read robots.txt leaves permission unconfirmed,
     and the retry does not happen
@@ -36,9 +38,9 @@ def _fetch(url, ua, strict=False):
     # scheme://host/robots.txt before calling here, so this is hardening for
     # direct callers rather than a hole in the gate path itself.
     r = subprocess.run(
-        ['curl', *(['-q'] if strict else []), '-sS', *([] if strict else ['-L', '--max-redirs', '5']), '--max-time', '12', '-A', ua,
+        ['curl', *(['-q'] if strict else []), '-sS', *([] if strict else ['-L', '--max-redirs', '5']), '--proto', '=http,https', '--proto-redir', '=http,https', '--max-time', '12', '-A', ua,
          '-H', 'Accept: text/plain,*/*', '-w', '\n%{http_code}', '--', url],
-        capture_output=True, text=True, timeout=20)
+        capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=20)
     if r.returncode != 0:
         raise RuntimeError('curl exit %d' % r.returncode)
     body, _, code = r.stdout.rpartition('\n')
@@ -54,6 +56,7 @@ def is_robots_body(text):
     body IS a valid allow-all under RFC 9309 and stays allowed; a non-empty body
     with no recognised directive is treated as unreadable.
     """
+    text = text.removeprefix('\ufeff')
     if not text.strip():
         return True
     for raw in text.splitlines():
@@ -64,10 +67,30 @@ def is_robots_body(text):
             return True
     return False
 
+def has_undecodable_rule(text):
+    """Does a User-agent, Allow or Disallow line hold U+FFFD?
+
+    U+FFFD stands in for a byte that did not decode as UTF-8. A non-conformant
+    robots.txt saved in a legacy code page (cp1254, ISO-8859-9) with raw
+    non-ASCII bytes in a rule yields a pattern that can never match: the rule
+    was silently skipped and the path read as allowed. Such a body is
+    unreadable, not permissive. The field is named with U+FFFD removed, so a
+    stray byte before "Disallow" cannot hide the line. U+FFFD in a comment or
+    in any other field (Sitemap, Crawl-delay, ...) decides nothing and is
+    ignored.
+    """
+    for raw in text.removeprefix('\ufeff').splitlines():
+        line = raw.split('#', 1)[0]
+        if '\ufffd' in line and ':' in line:
+            field = line.split(':', 1)[0].replace('\ufffd', '').strip().lower()
+            if field in ('user-agent', 'allow', 'disallow'):
+                return True
+    return False
+
 def _groups(text):
     """user-agent -> [(is_allow, pattern)], tolerating blank lines inside a record."""
     out, agents, expect = {}, [], True
-    for raw in text.splitlines():
+    for raw in text.removeprefix('\ufeff').splitlines():
         line = raw.split('#', 1)[0].strip()
         if not line or ':' not in line:
             continue
@@ -90,12 +113,41 @@ def _match(pattern, path):
     The pattern is percent-decoded to match the already-decoded path. Without
     this, "Disallow: /foo%20bar" never matched "/foo bar" and the rule was
     silently skipped - a fail-open on any site that encodes its own rules.
+    Under RFC 9309 section 2.2.2, '$' anchors the end of the URL only when
+    at the end of the pattern; mid-pattern '$' is matched literally.
+
+    Matching is a table walk in O(len(pattern) * len(path)), never a regex.
+    Each '*' used to become '.*', and a non-matching rule with repeated
+    wildcard segments ("/*a*a*a...*b$") sent Python's backtracking engine into
+    exponential time - minutes at 16 segments - on a file the site controls
+    (GHSA-xhqf-8q8x-4jwm). Consecutive '*' match as one, as RFC 9309 implies.
     """
     if pattern == '':
         return -1
     pattern = unquote(pattern)
-    rx = '^' + ''.join('.*' if c == '*' else ('$' if c == '$' else re.escape(c)) for c in pattern)
-    return len(pattern) if re.match(rx, path) else -1
+    end_anchor = pattern.endswith('$')
+    pat = re.sub(r'\*{2,}', '*', pattern[:-1] if end_anchor else pattern)
+    # reach[j] is True when the first j pattern characters match the path
+    # consumed so far. A '*' extends a match over any character (reach[j]
+    # carries forward) and also matches nothing (reach[j-1] on the same row).
+    reach = [True] + [False] * len(pat)
+    for j, c in enumerate(pat, 1):
+        if c != '*':
+            break
+        reach[j] = True
+    if reach[-1] and not end_anchor:
+        return len(pattern)
+    for ch in path:
+        step = [False] * (len(pat) + 1)
+        for j, c in enumerate(pat, 1):
+            if c == '*':
+                step[j] = step[j - 1] or reach[j]
+            elif c == ch:
+                step[j] = reach[j - 1]
+        reach = step
+        if reach[-1] and not end_anchor:
+            return len(pattern)      # a prefix match is enough without '$'
+    return len(pattern) if reach[-1] else -1
 
 def allowed(text, agent, path):
     g = _groups(text)
@@ -109,9 +161,13 @@ def allowed(text, agent, path):
 
 def gate(url, agent='Claude-User', strict=False):
     parts = urlsplit(url)
+    if parts.scheme not in ('http', 'https'):
+        return 1, f'UNCONFIRMED (unsupported URL scheme {parts.scheme!r}) - do not retry, go to step 3'
+    if not parts.netloc:
+        return 1, 'UNCONFIRMED (no host in the URL) - do not retry, go to step 3'
     path = unquote(parts.path) or '/'
     if parts.query:
-        path += '?' + parts.query
+        path += '?' + unquote(parts.query)
     robots = f'{parts.scheme}://{parts.netloc}/robots.txt'
     body, last = None, 'no attempt'
     for ua in ((agent,) if strict else (agent, BROWSER)):
@@ -124,6 +180,9 @@ def gate(url, agent='Claude-User', strict=False):
         if code == 200:
             if not is_robots_body(text):
                 last = 'HTTP 200 but the body is not a robots.txt'
+                continue
+            if has_undecodable_rule(text):
+                last = 'HTTP 200 but a User-agent/Allow/Disallow line is not valid UTF-8'
                 continue
             body = text; break
         last = 'HTTP %d' % code

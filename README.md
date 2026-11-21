@@ -85,6 +85,38 @@ The framework encodes career guidance best practices, including structured evalu
 - LaTeX distribution with `lualatex` and `xelatex`: [TeX Live](https://tug.org/texlive/), [MacTeX](https://tug.org/mactex/), [TinyTeX](https://yihui.org/tinytex/), or [MiKTeX](https://miktex.org/). The CV compiles with `lualatex` (pdflatex often fails on modern MiKTeX installs with `fontawesome5` font-expansion errors); the cover letter compiles with `xelatex` because `cover.cls` requires `fontspec`. If using a minimal TeX install such as TinyTeX or BasicTeX, install the extra packages listed in [SETUP.md](SETUP.md#minimal-tex-install-tinytexbasictex).
 - Optional: `pip install pypdf` for `/apply`'s ATS parseability check (BSD; no Poppler required). Poppler `pdftotext` remains a fallback (macOS: `brew install poppler`, Debian/Ubuntu: `apt install poppler-utils`, Windows: `choco install poppler`). If both are missing, the check degrades to a visual keyword review.
 
+## Indeed with JobSpy on OpenClaw
+
+This deployment runs on a self-hosted NAS with Docker. Each OpenClaw agent has
+its own sandbox and `ai-job-search` checkout. The agents receive the same portal
+code while keeping their own search settings, candidate profiles, and job records.
+The company CLI runs on Bun 1.3.14 in this deployment. The Indeed adapter
+invokes the sandbox’s Python 3 to run JobSpy.
+
+Indeed uses the original Indeed reader from `python-jobspy==1.5.0`. Supply the
+verified package and its dependencies in a local vendor directory importable by
+the sandbox's Python. Point `INDEED_JOBSPY_VENDOR_DIR` in the checkout's
+`.env.indeed.runtime` to that directory using its absolute sandbox path. Set
+`INDEED_SHARED_API_KEY` in a private `.env.indeed` file (mode 0600). Both
+environment files and the local vendor directory stay out of Git. Record the
+approved method and countries in the local `documents/profile/source-access.md`
+without including the key. See [OpenClaw setup](OPENCLAW_SETUP.md) for workspace
+setup and the [scrape rules](.claude/skills/job-scraper/SKILL.md) for authorization
+and request budgets.
+
+From the project root, an authorized Finland list query looks like this:
+
+```sh
+bun --env-file=.env.indeed --env-file=.env.indeed.runtime run \
+  .agents/skills/company-pages-search/cli/src/cli.ts search \
+  --source indeed --query protein --country FI --format json
+```
+
+The same CLI accepts `GB`, `DK`, `DE`, `NL`, `BE`, `CH`, and `CN` where
+authorized and selected by the workspace's market strategy. Each call reads a
+single country and one JobSpy list page, up to 100 results. The workflow retains
+coverage and errors, and uses the results as leads for original-source verification.
+
 ## Quick start
 
 > 🎥 **Prefer to see it in action first?** [The Next New Thing did a hands-on walkthrough](https://www.youtube.com/watch?v=HoVxjMNFYv4) of how the workflow is actually used, from setup to a finished application (recorded August 2026 - commands may have evolved since).

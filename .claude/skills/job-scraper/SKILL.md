@@ -66,7 +66,12 @@ Optional arguments:
    limited to this run's countries and sector. A guide is not a command to run
    every listed source. In either case apply Step 1b's source-access gate and
    enabled flags; neither installed CLIs nor the global/other-market source list
-   expands the selection. Do not rewrite personal strategy files or enable sources
+   expands the selection. Add the enabled LinkedIn list branch in Step 1e to
+   ordinary Europe/Finland scrapes unless the run or local strategy explicitly
+   excludes it. Also apply Step 1e's Indeed selection for interactive runs with
+   standing authorization covering the selected country and method, including
+   the China list branch. Do not
+   rewrite personal strategy files or enable sources
    to fill a gap. Record selection reasons and sources skipped or not attempted.
    Prior audit/online evidence may inform selection but is historical, never a
    successful request or coverage result for this run. Keep current untested
@@ -87,6 +92,7 @@ input, not the market's employer universe.
 | Novonesis | Existing exact Workday board, explicit --company only | Same-ID/canonical/JD-verified details only |
 | VTT | Existing exact official list/TalentAdore branch, explicit --company only | Same-ID/URL/JD-verified details only |
 | EURES | Europe supplemental keyword source, Step 1g | List leads provisional; only verified original-source details may advance |
+| Indeed | Authorized country list, Step 1e | List leads provisional; only verified original-source details may advance |
 | Work in Finland | Finland supplemental list; VTT-only detail reuse, Step 1d | Lists provisional; supported VTT details only after deployment and sandbox acceptance of this change |
 | EURAXESS | Selected research-sector list/detail, Step 1f | Lists provisional; identity/employer/sections-verified details only after deployment and sandbox acceptance of this change |
 
@@ -102,10 +108,10 @@ guess a tenant, bypass a checker or call a restricted endpoint. Record it as
 a separately documented permitted original-JD route if one is available.
 Ashby permission-unconfirmed and unsupported SuccessFactors paths remain pending
 capabilities; this does not exclude those employers from lawful discovery through
-other independently permitted sources. LinkedIn/Indeed alerts retain Step 1e's
-user-provided route, not automated scraping. Freehire stays out;
+other independently permitted sources. LinkedIn list discovery and the authorized
+Indeed country lists follow Step 1e. Freehire stays out;
 blocked Job Market Finland/Duunitori/Nature paths are not retried or bypassed.
-China and its existing route are unchanged.
+China uses Step 1e for Indeed list discovery and retains its existing local-JD requirements.
 
 For an ordinary user-requested market search, follow Step 1's query categories
 and consider relevant employers outside the priority list. Allocate the shared
@@ -134,6 +140,9 @@ one-off probe budget or turn it into recurring permission.
 - EURES: search 1 POST for page 1/10; detail at most 1 API GET plus 1 explicitly
   supplied supported original-page GET, each gated. No Finland country filter
   is verified, and no implicit list precedes detail.
+- Indeed: reserve one POST per selected country, up to 6 for Europe and
+  up to 1 for Finland or China. Each POST uses one keyword and reads the first
+  page. Preserve explicit exclusions and any tighter run-specific budget.
 - Work in Finland/EURAXESS: each list invocation reads one page and is separately
   gated. Budget each selected detail independently; do not assume a historical
   one-detail probe cap applies to every ordinary run. WIF re-reads the same
@@ -150,7 +159,8 @@ A rejected, unknown, challenged or rate-limited source stops without retry;
 retain errors/Retry-After and any partial coverage. Keep other independently
 eligible sources separate. Skip deferred calls explicitly rather than reporting
 no jobs. Budget is shared across keywords, source calls, markets and redirects;
-never reset it per query. Existing checker and adapter access checks still run.
+never reset it per query. Run checker and adapter access checks where required
+by the selected route.
 
 Keep list-only/unverified-JD leads visible in Step 5 and the provisional review
 queue defined in Step 0b; they are not excluded from evaluation. They stay outside
@@ -297,7 +307,8 @@ in ordinary runs and record their names for the Step 5 summary.
 **Source-access gate (search, fallback, detail and health).** Installation and
 `enabled: true` do not grant access permission. Before scheduling a source, read
 its selected skill's access restrictions and the applicable source/tool rules.
-User authorization is necessary but does not override a source restriction.
+User authorization is necessary. Step 1e defines the access precheck exceptions
+for LinkedIn list search and authorized Indeed GraphQL country lists.
 Where the request path requires the real checker, retain its permission check
 for the actual path and every permitted redirect; do not replace it with this
 selection gate. Missing/failed checker or unknown permission stays unconfirmed.
@@ -309,12 +320,9 @@ Keep this source-level decision and its evidence/reason in the run summary:
 | `denied` | `skip` | `skipped (access): denied`; coverage unverified, never healthy/no jobs. |
 | `unconfirmed` | `skip` | `skipped (access): unconfirmed`; coverage unverified, never healthy/no jobs. |
 
-Missing permission evidence is `unconfirmed`, not `permitted`. The installed
-LinkedIn skill declares automated access against its terms: do not schedule its
-direct CLI, automatic detail or health probes under that restriction. Low volume,
-public visibility and an enabled flag do not remove it. Manual user browsing,
-notifications or an explicitly approved interface need their own documented
-method/scope; do not automatically substitute them or fetch people-search links.
+Missing permission evidence is `unconfirmed`, not `permitted`. LinkedIn list
+search follows Step 1e; direct LinkedIn detail and health probes remain excluded.
+Never fetch people-search links.
 Keep disabled portals disabled; a named health request can select a disabled
 portal but still must pass this gate. Never edit toggles to recover access.
 
@@ -526,12 +534,71 @@ VTT-only implementation is not an employer exclusion for the overall workflow.
 
 #### 1e. LinkedIn / Indeed and user-controlled discovery leads
 
-LinkedIn direct `jobs-guest` scraping remains ineligible under Step 1b. A user
-request to repair a portal, an installed CLI, a public page, or a vendor's scraper
-claim does not establish platform permission. Do not use browser automation,
-session cookies, proxies, another UA/client, a third-party scraper, or search
-indexes to bypass a source restriction. A vendor interface needs documented
-permission for its actual data/method/scope, not merely an API key.
+**LinkedIn list search (personal-use exception).** Include it automatically in
+ordinary Finland/Europe scrapes when the installed `linkedin-search` skill is
+enabled and the run allows discovery. The user does not need to name LinkedIn.
+Respect the current workspace's strategy, its explicit exclusions and the shared
+request budget. The workspace owner's standing choice skips LinkedIn's terms and
+robots precheck for this list call only.
+Report inclusion as `user_opt_in`, not as platform permission.
+
+- Use the installed LinkedIn CLI with `search --single-request --page 1
+  --format json`, plus one keyword from the selected market strategy and one
+  explicit location within that market. Limit to one list call per market per
+  run. If the installed CLI lacks `--single-request`, record
+  `reader_incompatible` and skip it.
+- Stop LinkedIn for the rest of the run on a redirect, challenge, login wall,
+  timeout or unsuccessful response (including 403 and 429). Record errors and
+  Retry-After when supplied. Do not retry, change clients or follow the failure
+  through WebSearch. Other sources may continue.
+- Carry successful rows as partial list leads through normal market-scoped
+  deduplication and provisional evaluation. A missing date stays unknown.
+  Keep the list error or partial coverage even if no leads survive. This
+  exception excludes LinkedIn detail and health requests.
+
+A vendor interface needs documented permission for its actual data, method and scope.
+
+**Indeed country list search (user-confirmed Indeed authorization).** Use the
+company CLI `search --source indeed --query <keyword> --country <code> --format json`
+to send one `jobSearch` POST to `https://apis.indeed.com/graphql` with the
+approved runtime credential, without a robots precheck.
+
+Include Indeed automatically in ordinary interactive `/scrape` runs when the
+company skill is enabled, the run permits discovery, and standing Indeed
+authorization covers automatic queries for the selected country using the
+JobSpy App identifier and runtime credential. Use the current workspace's
+`documents/profile/source-access.md` for the standing Indeed scope. It records
+only authorization, country codes and method, without credentials or candidate
+facts. Do not reuse another candidate's scope or runtime environment.
+For these selections, invoke the CLI directly under normal tool approvals
+without an additional robots precheck or a repeat permission prompt.
+Load the established Indeed credential and JobSpy runtime environment files
+from the current project root using `bun --env-file=.env.indeed
+--env-file=.env.indeed.runtime run` followed by
+the company CLI path and arguments. Keep environment file contents private.
+Honor explicit source exclusions
+and the shared request budget. Scheduled or unattended runs stay outside this
+rollout. A one-time authorization or successful historical test does not
+establish standing authorization. When scope is missing, record
+`skipped (access): unconfirmed` and continue other sources.
+
+Use one keyword from the market strategy with `--country FI` for Finland or
+`--country CN` for China. Keep China leads in the existing China review path.
+For Europe, intersect the current workspace's selected market strategy and
+standing Indeed scope with the supported Europe countries `GB`, `DK`, `DE`,
+`NL`, `BE`, and `CH`. Query each eligible country exactly once, serially,
+using the same strategy keyword and one `--country` code per CLI invocation.
+Keep Finland under its own market. Reserve one POST per eligible country before
+starting the Europe batch. If the run budget cannot cover the selected countries,
+defer the batch and report `budget_unconfirmed`.
+Record each source/country result, coverage and errors separately. The CLI
+uses JobSpy 1.5.0's original 100-result page size. Stop on redirects,
+challenges, HTTP or GraphQL errors. Stop the remaining Indeed calls on access
+denial, rate limit or unconfirmed response and report unattempted countries.
+Do not retry or paginate. Keep leads
+provisional and exclude Indeed detail and health requests from this exception.
+An explicitly authorized one-off pilot may use the same bounded CLI without
+enabling recurring selection.
 
 User-controlled saved searches and official job alerts are discovery candidates,
 not an installed automated input. The user manages subscriptions and supplies

@@ -50,6 +50,7 @@ SEARCH FLAGS
   --jobage-minutes <n>    Posted within N minutes (sub-day precision). Conflicts with --jobage.
   --remote <mode>         remote | hybrid | onsite. Filter by workplace type.
   --page <n>              1-indexed page (10 results/page). Default 1.
+  --single-request        No retries or redirects. An unrecognized list is an error.
   --limit, -n <n>         Cap results emitted (client-side).
   --format <fmt>          json (default) | table | plain.
 
@@ -68,7 +69,7 @@ Personal use only — uses LinkedIn's public pages; keep volume low (LinkedIn To
 // still prints usage.
 const KNOWN_FLAGS: Record<string, Set<string>> = {
   search: new Set([
-    "location", "query", "jobage", "jobage-minutes", "remote", "page", "limit", "format", "help", "h",
+    "location", "query", "jobage", "jobage-minutes", "remote", "page", "limit", "format", "single-request", "help", "h",
   ]),
   detail: new Set(["format", "help", "h"]),
 }
@@ -103,6 +104,10 @@ async function main(): Promise<number> {
   }
 
   if (cmd === "search") {
+    if (flags["single-request"] !== undefined && flags["single-request"] !== true) {
+      process.stderr.write(JSON.stringify({ error: "--single-request takes no value", code: "BAD_ARG" }) + "\n")
+      return 1
+    }
     const location = typeof flags.location === "string" ? flags.location : undefined
     if (!location) {
       process.stderr.write(
@@ -167,6 +172,7 @@ async function main(): Promise<number> {
       jobageMinutes: flags["jobage-minutes"] ? parseInt(flags["jobage-minutes"] as string, 10) : undefined,
       remote: typeof flags.remote === "string" ? flags.remote : undefined,
       page: flags.page ? Math.max(1, parseInt(flags.page as string, 10)) : 1,
+      singleRequest: flags["single-request"] === true,
       limit: flags.limit ? parseInt(flags.limit as string, 10) : undefined,
       format: (["json", "table", "plain"].includes(fmt) ? fmt : "json") as SearchOpts["format"],
     }

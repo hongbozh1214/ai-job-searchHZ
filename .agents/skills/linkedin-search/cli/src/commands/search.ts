@@ -16,6 +16,7 @@ export interface SearchOpts {
   jobageMinutes?: number
   remote?: string // "remote" | "hybrid" | "onsite"
   page: number
+  singleRequest?: boolean
   limit?: number
   format: "json" | "table" | "plain"
 }
@@ -55,8 +56,12 @@ function renderTable(cards: JobCard[]): string {
 
 export async function runSearch(opts: SearchOpts): Promise<number> {
   try {
-    const html = await htmlFetch(buildUrl(opts))
+    const html = await htmlFetch(buildUrl(opts), opts.singleRequest)
     let cards = parseJobCards(html)
+    if (opts.singleRequest && cards.length === 0) {
+      writeError("No recognizable job cards. The list may be empty, blocked or changed.", "LIST_UNCONFIRMED")
+      return 1
+    }
     if (opts.limit !== undefined && opts.limit >= 0) cards = cards.slice(0, opts.limit)
 
     if (opts.format === "table") {
@@ -71,12 +76,16 @@ export async function runSearch(opts: SearchOpts): Promise<number> {
           .join("\n\n") + "\n",
       )
     } else {
+      const meta = {
+        count: cards.length,
+        page: opts.page,
+        ...(opts.singleRequest ? {
+          coverage: [{ source: "linkedin-search", status: "partial", reason: "single_page" }],
+          errors: [],
+        } : {}),
+      }
       process.stdout.write(
-        JSON.stringify(
-          { meta: { count: cards.length, page: opts.page }, results: cards },
-          null,
-          2,
-        ) + "\n",
+        JSON.stringify({ meta, results: cards }, null, 2) + "\n",
       )
     }
     return 0

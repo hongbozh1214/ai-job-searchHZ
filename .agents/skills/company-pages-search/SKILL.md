@@ -290,6 +290,22 @@ body rewrite. Other original sources and full page/market coverage remain
 unverified. Canonical Step 0a/Step 1g controls limited use; this skill does not
 activate normal/weekly tasks or expand a run's network budget.
 
+### Indeed country list search
+
+`search --source indeed --query protein --format json` defaults to one Finland
+page. For Europe, pass one explicit `--country` code: `GB`, `DK`, `DE`, `NL`,
+`BE` or `CH`. For China pass `--country CN`. The CLI does not read the employer registry. Follow canonical
+job-scraper Step 1e for country and authorization scope. Provide a dedicated directory
+containing `python-jobspy==1.5.0` and its dependencies as the absolute path
+`INDEED_JOBSPY_VENDOR_DIR`. Supply `INDEED_SHARED_API_KEY` privately.
+Keep the credential out of command flags, logs, repository files and fixtures.
+The bridge checks that the configured credential matches the version's original
+credential before requesting anything. JobSpy uses its original 100-result
+page size. The bridge reads one page and never follows a cursor or a redirect.
+A returned employer link stays unverified, and `date` is an Indeed
+listing date when present. Treat 403, 429, GraphQL errors and unexpected responses
+as source issues.
+
 ### List the registry
 
 ```bash

@@ -54,6 +54,7 @@ Key flags:
 - `--jobage-minutes <n>` — posted within N minutes (sub-day precision, e.g. `30`). Conflicts with `--jobage` — pass only one.
 - `--remote <mode>` — `remote`, `hybrid`, or `onsite` (workplace-type filter).
 - `--page <n>` — page number (1-indexed, 10 results per page).
+- `--single-request` — stop on redirects and HTTP errors, with no retries. An unrecognized list is reported as unconfirmed. Use this mode for the project workflow's personal-use exception.
 - `--limit <n>` / `-n <n>` — cap total results emitted (client-side).
 - `--format json|table|plain` — default `json`.
 
