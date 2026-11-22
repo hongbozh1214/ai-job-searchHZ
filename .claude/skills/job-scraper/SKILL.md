@@ -5,7 +5,7 @@ description: >
   (LinkedIn, local job boards, and any skills added with /add-portal). Deduplicates
   across runs. Triggers on: job scrape, find jobs, search jobs, new jobs, job search,
   scrape jobs, /scrape
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash(bun --version), Bash(bun run .agents/skills/*/cli/src/cli.ts *), Bash(python tools/job_key.py:*), Bash(python3 tools/job_key.py:*), Bash(python3 tools/rank_state.py:*), Bash(python3 tools/scrape_state.py:*), Bash(python3 tools/portal_catalog.py:*), WebFetch, WebSearch, Agent, AskUserQuestion
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(bun --version), Bash(bun run .agents/skills/*/cli/src/cli.ts *), Bash(python tools/job_key.py:*), Bash(python3 tools/job_key.py:*), Bash(python3 tools/rank_state.py:*), Bash(python3 tools/scrape_state.py:*), Bash(python3 tools/scrape_source_check.py:*), Bash(python3 tools/portal_catalog.py:*), WebFetch, WebSearch, Agent, AskUserQuestion
 ---
 
 # Job Scraper
@@ -73,6 +73,8 @@ Optional arguments:
    the China list branch. Do not
    rewrite personal strategy files or enable sources
    to fill a gap. Record selection reasons and sources skipped or not attempted.
+   Before any live search in a normal Europe/Finland run, complete the Step 1e
+   source-ledger preflight, including when `/scrape` is followed by `/rank`.
    Prior audit/online evidence may inform selection but is historical, never a
    successful request or coverage result for this run. Keep current untested
    sources unverified; preserve denied/unconfirmed/partial/errors in Step 5.
@@ -307,8 +309,10 @@ in ordinary runs and record their names for the Step 5 summary.
 **Source-access gate (search, fallback, detail and health).** Installation and
 `enabled: true` do not grant access permission. Before scheduling a source, read
 its selected skill's access restrictions and the applicable source/tool rules.
-User authorization is necessary. Step 1e defines the access precheck exceptions
-for LinkedIn list search and authorized Indeed GraphQL country lists.
+User authorization is necessary. Route LinkedIn list search and authorized Indeed
+GraphQL country lists to Step 1e before evaluating the general access table.
+Apply the table to the other request paths. Use the documented eligibility and
+stopping rules in Step 1e for its two list methods.
 Where the request path requires the real checker, retain its permission check
 for the actual path and every permitted redirect; do not replace it with this
 selection gate. Missing/failed checker or unknown permission stays unconfirmed.
@@ -326,7 +330,7 @@ Never fetch people-search links.
 Keep disabled portals disabled; a named health request can select a disabled
 portal but still must pass this gate. Never edit toggles to recover access.
 
-For each **selected enabled and access-permitted** portal skill:
+For each **selected enabled and access-permitted** portal skill on the general path:
 
 1. Read its `SKILL.md` to find the correct `bun run …` invocation and supported flags.
    Use the selected skill's resolved path while keeping the project as cwd.
@@ -534,6 +538,38 @@ VTT-only implementation is not an employer exclusion for the overall workflow.
 
 #### 1e. LinkedIn / Indeed and user-controlled discovery leads
 
+**Europe/Finland source ledger.** Before live search, record a decision for
+LinkedIn and each Indeed country in this market using the dedicated list rules
+below. Reconcile the same scope before presenting results, including after a
+run resumes. Run both checks from the project directory:
+
+```sh
+python3 tools/scrape_source_check.py plan --market <europe|finland> --input <local-plan.json>
+python3 tools/scrape_source_check.py report --market <europe|finland> --input <local-outcomes.json>
+```
+
+Keep separate, local ledgers for the two markets. Use a JSON object keyed by
+`linkedin` and `indeed:<country-code>`. The standard Europe scope expects
+`GB`, `DK`, `DE`, `NL`, `BE`, and `CH`. Finland expects `FI` only.
+Pass the same `--countries` in both checks when the selected market strategy
+or run explicitly narrows Europe before search. Record a row even for an
+ineligible country. Keep that scope through closeout.
+
+Record `planned` or `skipped` at preflight and reserve the documented budget.
+At closeout record `ran`, `failed`, `skipped`, or `deferred`. Include a short,
+nonsecret evidence note for each disposition other than `planned`. For a
+known source-specific refusal use `access_denied`. For absent standing Indeed
+authorization for this method or country use `missing_indeed_scope`. A generic
+`access_unconfirmed` verdict is not a valid reason to skip either list path.
+Record any other concrete blocker with the checker’s documented reason code.
+
+Resolve missing plan rows before network work. Before reporting, recover
+missing outcomes or safely complete unattempted calls still in scope and
+budget. Never resend a pending or uncertain request to satisfy the check.
+Report each uncovered or partial source and country. Failed, skipped and
+deferred rows do not establish zero jobs. This ledger validates the accounting;
+only tool outcomes establish the actual calls and coverage.
+
 **LinkedIn list search (personal-use exception).** Include it automatically in
 ordinary Finland/Europe scrapes when the installed `linkedin-search` skill is
 enabled and the run allows discovery. The user does not need to name LinkedIn.
@@ -580,7 +616,8 @@ Honor explicit source exclusions
 and the shared request budget. Scheduled or unattended runs stay outside this
 rollout. A one-time authorization or successful historical test does not
 establish standing authorization. When scope is missing, record
-`skipped (access): unconfirmed` and continue other sources.
+`skipped (access): unconfirmed` with reason `missing_indeed_scope` and continue
+other sources.
 
 Use one keyword from the market strategy with `--country FI` for Finland or
 `--country CN` for China. Keep China leads in the existing China review path.
@@ -946,6 +983,10 @@ For each enabled portal that ran in Step 1b:
 **Probe-only mode (`/scrape health`).** Skip Steps 1-4 and this step's free pass (there is no fresh run to scan); instead probe every installed portal directly - enabled ones by default, a disabled one only when named explicitly (e.g. `/scrape health jobnet`). Each portal gets the sentinel probe above, the degraded criteria applied to whatever it returns, and - since the user explicitly asked for diagnosis - one `detail` fetch on the first result of each healthy portal (description must be readable decoded text; a failure downgrades to degraded). Report all statuses in this mode, including healthy. Volume stays bounded: one search, at most one retry, at most one detail per portal.
 
 ### Step 5: Present Results
+
+For a normal Europe or Finland scrape, run Step 1e's closeout ledger check before
+presenting results. Include its uncovered sources and countries. If the check
+could not finish, report LinkedIn/Indeed coverage as incomplete and explain why.
 
 For Europe/Finland, name the resolved market, local strategy path and source-guide
 path from Step 0, plus selected/attempted/skipped sources and selection reasons.
