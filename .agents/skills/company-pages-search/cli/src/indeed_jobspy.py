@@ -12,6 +12,7 @@ VERSION = "1.5.0"
 ENDPOINT = "https://apis.indeed.com/graphql"
 PAGE_SIZE = 100
 BODY_LIMIT = 8 * 1024 * 1024
+DESCRIPTION_LIMIT = 32 * 1024
 
 
 def fields(record, **limits):
@@ -20,7 +21,7 @@ def fields(record, **limits):
             if isinstance(record.get(key), str) and len(record[key]) <= limit}
 
 
-def lead_fields(row):
+def lead_fields(row, convert_description):
     job = row.get("job") if isinstance(row, dict) else None
     if not isinstance(job, dict):
         return {}
@@ -30,10 +31,25 @@ def lead_fields(row):
     lead["location"] = fields(job.get("location"), countryCode=2, city=256)
     lead["employer"] = fields(job.get("employer"), name=512)
     lead["recruit"] = fields(job.get("recruit"), viewJobUrl=2048)
+    if convert_description is not None:
+        raw_description = job.get("description")
+        html = raw_description.get("html") if isinstance(raw_description, dict) else None
+        lead["description_status"] = "missing"
+        if isinstance(html, str) and html.strip():
+            if len(html) > DESCRIPTION_LIMIT:
+                lead["description_status"] = "too_large"
+            else:
+                try:
+                    description = convert_description(html)
+                    if description:
+                        lead["description_text"] = description
+                        lead["description_status"] = "present"
+                except (ValueError, RecursionError):
+                    lead["description_status"] = "unreadable"
     return {"job": lead}
 
 
-def project_page(payload):
+def project_page(payload, convert_description):
     if not isinstance(payload, dict):
         return None
     errors = payload.get("errors", [])
@@ -47,14 +63,14 @@ def project_page(payload):
     rows = search.get("results") if isinstance(search, dict) else None
     if not isinstance(rows, list):
         return None
-    page = {"results": [lead_fields(row) for row in rows[:PAGE_SIZE + 1]]}
+    page = {"results": [lead_fields(row, convert_description) for row in rows[:PAGE_SIZE + 1]]}
     info = search.get("pageInfo")
     if isinstance(info, dict) and "nextCursor" in info:
         page["pageInfo"] = {"nextCursor": None if info["nextCursor"] is None else True}
     return {"data": {"jobSearch": page}}
 
 
-def read_page(response, result):
+def read_page(response, result, convert_description):
     result["status"] = response.status_code
     result["challenge"] = response.headers.get("cf-mitigated") == "challenge"
     if response.status_code == 429:
@@ -72,7 +88,7 @@ def read_page(response, result):
             return
         body.extend(chunk)
     try:
-        result["payload"] = project_page(json.loads(body.decode("utf-8")))
+        result["payload"] = project_page(json.loads(body.decode("utf-8")), convert_description)
     except (UnicodeError, ValueError, RecursionError):
         result["error"] = "indeed_invalid_json_body"
 
@@ -98,7 +114,7 @@ def run_page(keyword, country_code, result):
         from jobspy.indeed import Indeed
         from jobspy.indeed.constant import country_codes, headers, jobs_per_page
         from jobspy.model import ScraperInput, Site
-        from jobspy.util import RequestsRotating
+        from jobspy.util import RequestsRotating, plain_converter
     except (ImportError, OSError):
         result["error"] = "indeed_jobspy_unavailable"
         return
@@ -131,7 +147,7 @@ def run_page(keyword, country_code, result):
         try:
             with post(session, url, **kwargs, allow_redirects=False,
                       stream=True, timeout=(5, 15)) as response:
-                read_page(response, result)
+                read_page(response, result, plain_converter if country_code != "CN" else None)
         except exceptions.Timeout:
             result["error"] = "indeed_jobspy_timeout"
         except exceptions.RequestException as exc:
@@ -158,4 +174,5 @@ if __name__ == "__main__":
         run_page(sys.argv[1], sys.argv[2], result)
     except Exception:
         result["error"] = "indeed_jobspy_process_failed"
-    print(json.dumps(result))
+    output = json.dumps(result, ensure_ascii=False, separators=(",", ":")) + "\n"
+    sys.stdout.buffer.write(output.encode("utf-8", errors="backslashreplace"))

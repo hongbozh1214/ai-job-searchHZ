@@ -325,6 +325,22 @@ class SourceAccessContractTests(unittest.TestCase):
         self.assertIn("Denied/unconfirmed sources get no sentinel", health)
         self.assertIn("including\nexplicitly named disabled portals", health)
 
+    def test_provisional_shortlist_uses_body_before_original_verification(self):
+        text = " ".join(SCRAPER_SKILL.read_text(encoding="utf-8").split())
+        policy = text.split("#### 0b.", 1)[1].split("### Step 1:", 1)[0]
+        for phrase in (
+            "Original verification is not a prerequisite for provisional scoring",
+            "leave original verification of the high-ranked shortlist to the user",
+            "in a separate list without a numeric score",
+            "body source, original-verification status and key unknowns",
+            "Do not count provisional rows as ready for formal scoring",
+            "do not send incomplete scores to `rank_state.py apply`",
+        ):
+            self.assertIn(phrase, policy)
+        rank = (REPO_ROOT / ".claude/commands/rank.md").read_text(encoding="utf-8")
+        self.assertIn("canonical job-scraper **Steps 0b and 2**", rank)
+        self.assertIn("without employer-original lookups or formal score writes", rank)
+
     def test_access_skips_and_failures_survive_zero_yield_summary(self):
         text = SCRAPER_SKILL.read_text(encoding="utf-8")
         summary = text.split("### Step 5: Present Results", 1)[1]

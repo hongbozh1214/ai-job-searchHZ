@@ -21,6 +21,12 @@ Follow these steps **in order**.
 
 `--limit` bounds the expensive fetch-and-score work; `--top` only bounds how many scored jobs appear in the shortlist. They are independent: jobs beyond `--limit` are deferred, not silently discarded.
 
+For a Europe/Finland request to rank an existing shortlist provisionally, use
+the supplied or current run's observed evidence and the selected market's rubric
+and local profile. Present the Step 0b table without a state selection, expiry
+sweep, or write. A request to score saved evidence alone does not start new
+network retrieval.
+
 ---
 
 ## Step 1: Load State
@@ -62,7 +68,7 @@ Dispatch parallel `general-purpose` agents via the **Agent tool**, ~5 jobs per a
 
 - Pass each agent everything it needs **inline in the prompt** - the job list (title, company, URL) and a compact scoring rubric extracted from the files you read in Step 1: the strong/moderate/weak skill match areas, direct/adjacent experience domains, behavioral thrive/drain factors, career goals, deal-breakers, and the location constraints. Do **not** make agents re-read the profile files.
 - For a China candidate with `job_file`, read that inbox file as the complete JD and score offline. Never fetch or search a China job board during the China ranking workflow; do not mark a complete saved JD `expired` merely because its source URL is blocked or missing.
-- For Europe/Finland follow canonical job-scraper **Step 0b**: retain failed-fetch/list-only/identity-unconfirmed candidates for provisional evaluation, with evidence scope, missing information and access/identity issues shown. Missing JD prevents a complete verified score, not a visible provisional assessment or interval. Only a confirmed wrong posting rejects the detail association, and its exact conflict is reported; do not silently drop the original lead. Never score an unrelated detail as if it were the selected job.
+- For Europe/Finland follow canonical job-scraper **Steps 0b and 2**. Use the observed Indeed list or eligible LinkedIn detail body for source-labeled provisional scoring and shortlist order. When the user requests provisional-only ranking, apply Step 0b without employer-original lookups or formal score writes. Keep list-only leads visible as preliminary relevance without a numeric score, and retain access or identity issues. A confirmed wrong posting rejects the detail association and the exact conflict is reported.
 - Every live request still follows the selected source's restrictions, real checker where required and shared budget. A denied/unconfirmed check, 403, challenge or 429 stops that request path; do not retry with browser headers, curl or another environment. The escalation advice in 09-web-research does not override this boundary. Evaluate already obtained evidence instead. A 404, unavailable page, listing redirect or parser failure alone does not justify `expired`; require actual closure/deadline evidence. Unknown facts remain unknown.
 - For other legacy non-China routes, use actually obtained posting content; never fabricate it or treat a blocked client as proof of closure.
 - Scope is triage: posting text vs. rubric. **No company research, no salary lookup, no web searches** - that depth belongs to `/apply`.

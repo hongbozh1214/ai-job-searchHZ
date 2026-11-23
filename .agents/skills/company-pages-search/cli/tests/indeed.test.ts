@@ -20,12 +20,19 @@ const page = (jobs: unknown[], nextCursor: string | null = null) => ({
 
 const fixtureSession = String.raw`
 import json
+import re
+from html import unescape
 from pathlib import Path
 from types import SimpleNamespace
 from requests import exceptions
 from urllib3.exceptions import ReadTimeoutError
 
 fixture = Path(__file__).parents[1] / "response.json"
+
+def plain_converter(html):
+    if html == "Unreadable fixture":
+        raise ValueError("invalid description")
+    return unescape(re.sub(r"<[^>]+>", " ", html)).strip()
 
 class Response:
     def __init__(self, spec):
@@ -122,7 +129,6 @@ function cliReplay(response: object, key = "synthetic-key", country?: keyof type
     expect(result.exitCode).toBe(0)
     const stdout = result.stdout.toString()
     expect(stdout).not.toContain("synthetic-key")
-    expect(stdout).not.toContain("fixture-only body")
     const resultJson = JSON.parse(stdout)
     const attempts = Bun.file(join(cwd, "one-post")).size > 0 ? Number(readFileSync(join(cwd, "one-post"), "utf8")) : 0
     expect(resultJson.meta.coverage[0].requests).toBe(attempts)
@@ -134,8 +140,8 @@ function cliReplay(response: object, key = "synthetic-key", country?: keyof type
 
 test("CLI reads one JobSpy page and emits deduplicated provisional Finnish leads", () => {
   const result = cliReplay({ payload: page([
-    { ...finnishJob, description: { html: "fixture-only body" } }, finnishJob,
-    { ...finnishJob, key: "outside", location: { countryCode: "SE" } },
+    finnishJob, { ...finnishJob, description: { html: "<p>Develop enzyme assays &amp; validate workflows.</p>" } },
+    { ...finnishJob, key: "outside", description: { html: "Not this market" }, location: { countryCode: "SE" } },
     { ...finnishJob, key: "unknown", location: null },
   ], "never-follow-this-cursor") })
   expect(result.meta.coverage[0]).toMatchObject({ status: "partial", requests: 1, received_count: 4 })
@@ -143,7 +149,24 @@ test("CLI reads one JobSpy page and emits deduplicated provisional Finnish leads
   expect(result.results).toMatchObject([{
     id: "synthetic1", company: "Fixture Labs", date: null, date_source: null, country: "FI",
     reported_external_url: "https://careers.example.test/jobs/1", needs_detail: true,
+    description: "Develop enzyme assays & validate workflows.",
+    description_source: "indeed_list", description_status: "present",
   }])
+  expect(JSON.stringify(result)).not.toContain("Not this market")
+})
+
+test("missing, oversized, unreadable and conflicting Indeed descriptions remain unusable as bodies", () => {
+  const result = cliReplay({ payload: page([
+    finnishJob,
+    { ...finnishJob, key: "oversized", description: { html: "x".repeat(32769) } },
+    { ...finnishJob, key: "conflicting", description: { html: "<p>Initial description</p>" } },
+    { ...finnishJob, key: "conflicting", description: { html: "<p>Other description</p>" } },
+    { ...finnishJob, key: "unreadable", description: { html: "Unreadable fixture" } },
+  ]) })
+  expect(result.results.map((job: { description_status: string }) => job.description_status))
+    .toEqual(["missing", "too_large", "conflicting", "unreadable"])
+  expect(result.results.every((job: object) => !("description" in job))).toBe(true)
+  expect(result.meta.errors).toContainEqual({ company: "Indeed", error: "conflicting_description:3" })
 })
 
 test("missing or mismatched credential prevents the POST", () => {
@@ -157,10 +180,13 @@ test("Europe and China requests carry their selected country and discard jobs fr
   for (const country of ["GB", "DK", "DE", "NL", "BE", "CH", "CN"] as const) {
     const domain = country === "GB" ? "uk" : country.toLowerCase()
     const result = cliReplay({ payload: page([
-      finnishJob, { ...finnishJob, key: "europe1", location: { countryCode: country, city: "Fixture city" } },
+      finnishJob, { ...finnishJob, key: "europe1", location: { countryCode: country, city: "Fixture city" },
+        description: { html: "<p>Develop protein analysis methods.</p>" } },
     ]) }, "synthetic-key", country)
     expect(result.meta.coverage[0]).toMatchObject({ status: "partial", country_scope: country, requests: 1, received_count: 2 })
     expect(result.results).toMatchObject([{ id: "europe1", country, url: `https://${domain}.indeed.com/viewjob?jk=europe1` }])
+    if (country === "CN") expect("description" in result.results[0]).toBe(false)
+    else expect(result.results[0].description_source).toBe("indeed_list")
   }
   const invalid = Bun.spawnSync([process.execPath, "run", cli, "search", "--source", "indeed", "--query", "protein", "--country", "EU"], {
     env: { PATH: process.env.PATH },

@@ -17,6 +17,8 @@ type Status = "partial" | "valid_empty" | "blocked" | "rate_limited" | "parse_fa
 type Lead = NormalizedJob & {
   portal: "indeed"; country: IndeedCountry; date_source: "indeed_date_on_site" | null
   needs_detail: true; reported_external_url: string | null
+  description?: string; description_source?: "indeed_list"
+  description_status?: "present" | "missing" | "too_large" | "unreadable" | "conflicting"
 }
 type Scan = {
   jobs: Lead[]; coverage: Status; reason: string; errors: string[]; requests: number | null
@@ -76,20 +78,35 @@ export function parseIndeedPage(value: unknown, target: IndeedCountry): Scan {
     if (country !== target) continue
     const company = text(record(job.employer).name) ?? text(job.sourceEmployerName) ?? ""
     const prior = jobs.get(id)
+    const description = target !== "CN" ? text(job.description_text) : null
     if (prior && (prior.title !== title || (prior.company && company && prior.company !== company))) {
       conflicts.add(id)
       jobs.delete(id)
       scan.errors.push(`conflicting_record_identity:${index}`)
     }
+    if (prior && !conflicts.has(id) && description && prior.description_status !== "conflicting") {
+      if (prior.description && prior.description !== description) {
+        delete prior.description
+        delete prior.description_source
+        prior.description_status = "conflicting"
+        scan.errors.push(`conflicting_description:${index}`)
+      } else {
+        Object.assign(prior, { description, description_source: "indeed_list", description_status: "present" })
+      }
+    }
     if (prior || conflicts.has(id)) continue
     const stamp = job.dateOnIndeed
     const date = typeof stamp === "number" && Number.isSafeInteger(stamp) && stamp > 0 &&
       stamp <= 253402300799999 ? new Date(stamp).toISOString().slice(0, 10) : null
+    const descriptionStatus = job.description_status === "too_large" || job.description_status === "unreadable"
+      ? job.description_status : "missing"
     jobs.set(id, {
       id, title, company, location: text(location.city), date, date_source: date ? "indeed_date_on_site" : null,
       url: `https://${target === "GB" ? "uk" : target.toLowerCase()}.indeed.com/viewjob?jk=${id}`,
       source_ats: "generic", portal: "indeed", country: target, needs_detail: true,
       reported_external_url: externalUrl(record(job.recruit).viewJobUrl),
+      ...(description ? { description, description_source: "indeed_list", description_status: "present" } :
+        target !== "CN" ? { description_status: descriptionStatus } : {}),
     })
   }
   return { ...scan, jobs: [...jobs.values()] }
@@ -106,7 +123,7 @@ export async function fetchIndeedPage(query: string | undefined, country: Indeed
   let output: string
   try {
     const { stdout } = await run("python3", ["-I", "-B", BRIDGE, keyword, country], {
-      timeout: 25000, killSignal: "SIGKILL", maxBuffer: 512 * 1024, encoding: "utf8",
+      timeout: 25000, killSignal: "SIGKILL", maxBuffer: 9 * 1024 * 1024, encoding: "utf8",
       env: { PATH: process.env.PATH, INDEED_SHARED_API_KEY: key, INDEED_JOBSPY_VENDOR_DIR: vendor },
     })
     output = stdout

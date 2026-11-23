@@ -16,7 +16,7 @@ delete env.COMPANY_OFFLINE_EURAXESS_ROBOTS_FIXTURE
 delete env.COMPANY_OFFLINE_EURES_ROBOTS_FIXTURE
 const suite = process.argv[2] ?? 'vtt'
 // All suites run the same default-deny selfchecks before any fixture is enabled.
-if (!['vtt', 'ashby', 'novonesis', 'work-in-finland', 'euraxess', 'eures'].includes(suite) || process.argv.length > 3) throw Error('Only vtt, ashby, novonesis, work-in-finland, euraxess or eures offline suites are allowed')
+if (!['vtt', 'ashby', 'novonesis', 'work-in-finland', 'euraxess', 'eures', 'indeed'].includes(suite) || process.argv.length > 3) throw Error('Only vtt, ashby, novonesis, work-in-finland, euraxess, eures or indeed offline suites are allowed')
 async function run(label:string,args:string[],expect:string, expectedExit:number) {
  const proc=Bun.spawn(args,{env,cwd:cli,stdout:'pipe',stderr:'pipe'})
  const out=await new Response(proc.stdout).text(),err=await new Response(proc.stderr).text(),code=await proc.exited
